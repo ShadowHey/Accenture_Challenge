@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Patient Schema",
+  "type": "object",
+  "properties": {
+    "id": { "type": "string" },
+    "name": { "type": "string" },
+    "age": { "type": "integer" },
+    "gender": { "type": "string" },
+    "chief_complaint": { "type": "string" },
+    "vitals": {
+      "type": "object",
+      "properties": {
+        "heart_rate": { "type": "integer" },
+        "blood_pressure": { "type": "string" },
+        "respiratory_rate": { "type": "integer" },
+        "temperature": { "type": "number" },
+        "spo2": { "type": "integer" }
+      }
+    },
+    "history_available": { "type": "boolean" },
+    "medical_history": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "observed_signs": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "required": ["id", "name", "age", "gender", "chief_complaint", "vitals", "history_available", "medical_history", "observed_signs"]
+}

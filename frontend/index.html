@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PatientTriage.ai</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>PatientTriage.ai - Prototype</h1>
+        <div class="actions">
+            <button id="btn-surge" class="btn-warning">Simulate Surge (Load Patients)</button>
+            <button id="btn-clear" class="btn-danger">Clear Data</button>
+        </div>
+    </header>
+
+    <main>
+        <section id="queue-section">
+            <h2>Waiting Queue</h2>
+            <div id="queue-container"></div>
+        </section>
+        
+        <section id="audit-section">
+            <h2>Audit Log</h2>
+            <div id="audit-container"></div>
+        </section>
+    </main>
+
+    <!-- Modal for Clinician Override -->
+    <div id="override-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>Clinician Override</h2>
+            <p>Patient ID: <span id="override-patient-id"></span></p>
+            <p>Current Priority: <span id="override-current-prio"></span></p>
+            <label for="new-priority">New Priority:</label>
+            <select id="new-priority">
+                <option value="LEVEL 1">LEVEL 1 - Immediate</option>
+                <option value="LEVEL 2">LEVEL 2 - Emergent</option>
+                <option value="LEVEL 3">LEVEL 3 - Urgent</option>
+                <option value="LEVEL 4">LEVEL 4 - Less Urgent</option>
+                <option value="LEVEL 5">LEVEL 5 - Non-Urgent</option>
+            </select>
+            <label for="override-reason">Reason for Override:</label>
+            <textarea id="override-reason" rows="3"></textarea>
+            <button id="btn-submit-override" class="btn-primary">Submit Override</button>
+        </div>
+    </div>
+
+    <!-- Modal for Vitals Update -->
+    <div id="vitals-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn-vitals">&times;</span>
+            <h2>Update Vitals (Simulate Deterioration)</h2>
+            <p>Patient ID: <span id="vitals-patient-id"></span></p>
+            <label>Heart Rate:</label>
+            <input type="number" id="vitals-hr" />
+            <label>SpO2 (%):</label>
+            <input type="number" id="vitals-spo2" />
+            <button id="btn-submit-vitals" class="btn-primary">Update Vitals</button>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

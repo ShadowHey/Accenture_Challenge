@@ -1,0 +1,222 @@
+[
+  {
+    "id": "P001",
+    "name": "John Doe",
+    "age": 45,
+    "gender": "M",
+    "chief_complaint": "Mild chest pain",
+    "vitals": {"heart_rate": 85, "blood_pressure": "130/85", "respiratory_rate": 16, "temperature": 37.1, "spo2": 98},
+    "history_available": true,
+    "medical_history": ["Hypertension"],
+    "observed_signs": ["Alert"]
+  },
+  {
+    "id": "P002",
+    "name": "Jane Smith",
+    "age": 72,
+    "gender": "F",
+    "chief_complaint": "Severe shortness of breath",
+    "vitals": {"heart_rate": 125, "blood_pressure": "90/60", "respiratory_rate": 28, "temperature": 38.0, "spo2": 88},
+    "history_available": false,
+    "medical_history": [],
+    "observed_signs": ["Pale", "Sweating"]
+  },
+  {
+    "id": "P003",
+    "name": "Timmy Turner",
+    "age": 5,
+    "gender": "M",
+    "chief_complaint": "Fever and rash",
+    "vitals": {"heart_rate": 130, "blood_pressure": "100/65", "respiratory_rate": 24, "temperature": 39.5, "spo2": 99},
+    "history_available": true,
+    "medical_history": ["Asthma"],
+    "observed_signs": ["Crying", "Lethargic"]
+  },
+  {
+    "id": "P004",
+    "name": "Robert Black",
+    "age": 28,
+    "gender": "M",
+    "chief_complaint": "Sprained ankle",
+    "vitals": {"heart_rate": 75, "blood_pressure": "120/80", "respiratory_rate": 14, "temperature": 36.8, "spo2": 100},
+    "history_available": true,
+    "medical_history": [],
+    "observed_signs": ["Limping", "Swelling on right ankle"]
+  },
+  {
+    "id": "P005",
+    "name": "Alice White",
+    "age": 50,
+    "gender": "F",
+    "chief_complaint": "Dizziness and vague weakness",
+    "vitals": {"heart_rate": 65, "blood_pressure": "110/70", "respiratory_rate": 16, "temperature": 37.0, "spo2": 97},
+    "history_available": false,
+    "medical_history": [],
+    "observed_signs": ["Looks confused"]
+  },
+  {
+    "id": "P006",
+    "name": "Arthur Pendelton",
+    "age": 82,
+    "gender": "M",
+    "chief_complaint": "Fell at home, hip pain",
+    "vitals": {"heart_rate": 90, "blood_pressure": "145/90", "respiratory_rate": 18, "temperature": 36.5, "spo2": 96},
+    "history_available": true,
+    "medical_history": ["Osteoporosis", "Type 2 Diabetes"],
+    "observed_signs": ["In pain", "Unable to bear weight"]
+  },
+  {
+    "id": "P007",
+    "name": "Emily Blunt",
+    "age": 35,
+    "gender": "F",
+    "chief_complaint": "Abdominal pain",
+    "vitals": {},
+    "history_available": true,
+    "medical_history": ["Appendectomy"],
+    "observed_signs": ["Guarding abdomen"]
+  },
+  {
+    "id": "P008",
+    "name": "Ghost Patient",
+    "age": 40,
+    "gender": "M",
+    "chief_complaint": "Found unconscious",
+    "vitals": {"heart_rate": 45, "blood_pressure": "80/50", "respiratory_rate": 8, "temperature": 35.5, "spo2": 85},
+    "history_available": false,
+    "medical_history": [],
+    "observed_signs": ["Unresponsive", "Cyanotic"]
+  },
+  {
+    "id": "P009",
+    "name": "Sammy Junior",
+    "age": 2,
+    "gender": "M",
+    "chief_complaint": "Vomiting and diarrhea",
+    "vitals": {"heart_rate": 150, "blood_pressure": "85/55", "respiratory_rate": 30, "temperature": 38.2, "spo2": 97},
+    "history_available": false,
+    "medical_history": [],
+    "observed_signs": ["Dry mucous membranes", "Sunken eyes"]
+  },
+  {
+    "id": "P010",
+    "name": "Chloe Decker",
+    "age": 29,
+    "gender": "F",
+    "chief_complaint": "Minor cut on finger",
+    "vitals": {"heart_rate": 80, "blood_pressure": "115/75", "respiratory_rate": 15, "temperature": 37.0, "spo2": 100},
+    "history_available": true,
+    "medical_history": ["None"],
+    "observed_signs": ["Bleeding controlled", "Alert"]
+  },
+  {
+    "id": "P011",
+    "name": "Bruce Wayne",
+    "age": 42,
+    "gender": "M",
+    "chief_complaint": "Chest pain radiating to left arm",
+    "vitals": {"heart_rate": 110, "blood_pressure": "160/100", "respiratory_rate": 22, "temperature": 37.2, "spo2": 95},
+    "history_available": true,
+    "medical_history": ["High Cholesterol", "Family history of MI"],
+    "observed_signs": ["Diaphoretic", "Clutching chest"]
+  },
+  {
+    "id": "P012",
+    "name": "Martha Kent",
+    "age": 68,
+    "gender": "F",
+    "chief_complaint": "Headache and blurred vision",
+    "vitals": {"heart_rate": 88, "blood_pressure": "200/120", "respiratory_rate": 18, "temperature": 36.9, "spo2": 98},
+    "history_available": true,
+    "medical_history": ["Hypertension"],
+    "observed_signs": ["Squinting", "Anxious"]
+  },
+  {
+    "id": "P013",
+    "name": "Barry Allen",
+    "age": 24,
+    "gender": "M",
+    "chief_complaint": "Palpitations",
+    "vitals": {"heart_rate": 180, "blood_pressure": "120/80", "respiratory_rate": 20, "temperature": 37.0, "spo2": 99},
+    "history_available": false,
+    "medical_history": [],
+    "observed_signs": ["Restless"]
+  },
+  {
+    "id": "P014",
+    "name": "Diana Prince",
+    "age": 30,
+    "gender": "F",
+    "chief_complaint": "Nausea",
+    "vitals": {"heart_rate": 72, "blood_pressure": "110/70", "respiratory_rate": 14, "temperature": 37.0, "spo2": 100},
+    "history_available": true,
+    "medical_history": ["Early Pregnancy"],
+    "observed_signs": ["Appears well"]
+  },
+  {
+    "id": "P015",
+    "name": "Hal Jordan",
+    "age": 55,
+    "gender": "M",
+    "chief_complaint": "Cough and fatigue",
+    "vitals": {"heart_rate": 95, "blood_pressure": "135/85", "respiratory_rate": 20, "temperature": 38.5, "spo2": 92},
+    "history_available": true,
+    "medical_history": ["COPD"],
+    "observed_signs": ["Using accessory muscles to breathe"]
+  },
+  {
+    "id": "P016",
+    "name": "Arthur Curry",
+    "age": 33,
+    "gender": "M",
+    "chief_complaint": "Jellyfish sting",
+    "vitals": {"heart_rate": 105, "blood_pressure": "140/90", "respiratory_rate": 18, "temperature": 37.1, "spo2": 98},
+    "history_available": false,
+    "medical_history": [],
+    "observed_signs": ["Red rash on leg", "In distress"]
+  },
+  {
+    "id": "P017",
+    "name": "Victor Stone",
+    "age": 27,
+    "gender": "M",
+    "chief_complaint": "Motorcycle accident",
+    "vitals": {"heart_rate": 140, "blood_pressure": "80/40", "respiratory_rate": 28, "temperature": 36.0, "spo2": 90},
+    "history_available": false,
+    "medical_history": [],
+    "observed_signs": ["Multiple abrasions", "Altered mental status"]
+  },
+  {
+    "id": "P018",
+    "name": "Wally West",
+    "age": 16,
+    "gender": "M",
+    "chief_complaint": "Asthma attack",
+    "vitals": {"heart_rate": 120, "blood_pressure": "110/70", "respiratory_rate": 26, "temperature": 37.0, "spo2": 89},
+    "history_available": true,
+    "medical_history": ["Asthma"],
+    "observed_signs": ["Wheezing audibly", "Tripoding"]
+  },
+  {
+    "id": "P019",
+    "name": "Oliver Queen",
+    "age": 38,
+    "gender": "M",
+    "chief_complaint": "Arrow wound in leg",
+    "vitals": {"heart_rate": 98, "blood_pressure": "125/80", "respiratory_rate": 16, "temperature": 37.0, "spo2": 99},
+    "history_available": true,
+    "medical_history": [],
+    "observed_signs": ["Bleeding, tourniquet applied"]
+  },
+  {
+    "id": "P020",
+    "name": "John Constantine",
+    "age": 48,
+    "gender": "M",
+    "chief_complaint": "Vague abdominal pain, generally unwell",
+    "vitals": {"heart_rate": 110, "blood_pressure": "100/60", "respiratory_rate": 20, "temperature": 37.5, "spo2": 96},
+    "history_available": false,
+    "medical_history": [],
+    "observed_signs": ["Jaundiced", "Smells of alcohol"]
+  }
+]
