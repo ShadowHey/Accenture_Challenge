@@ -1,51 +1,49 @@
 # Project Map
 
-This file documents the core folders and files for PatientTriage.ai.
+## Backend
 
-## Folders
+*   `backend/main.py`: FastAPI server setup, API routes (Stage 2: full hybrid pipeline, simulation endpoints, queue management).
+*   `backend/models.py`: Pydantic data models (`PatientInput`, `Vitals`, `TriageResult`, etc.). Expanded for Stage 2.
+*   `backend/triage_engine/`
+    *   `triage_rules.py`: Age-stratified deterministic logic for assigning priority levels.
+    *   `uncertainty_calculator.py`: Logic for measuring missing information and calculating confidence/escalation.
+    *   `patient_validator.py`: Logic for checking data completeness.
+    *   `triage_explanation.py`: Orchestrator for the rules portion of the pipeline.
+*   `backend/ml/` (Stage 2)
+    *   `feature_extractor.py`: Extracts 22-dimensional feature vector from PatientInput.
+    *   `model_loader.py`: Singleton loader for the joblib model.
+    *   `predictor.py`: Executes local ML inference.
+    *   `reconciler.py`: Merges rules and ML predictions safely.
+    *   `training/generate_training_data.py`: Generates synthetic CSV data.
+    *   `training/train_model.py`: Trains GradientBoostingClassifier and saves to joblib.
+*   `backend/queue/`
+    *   `queue_monitor.py`: Queue manager. Tracks severity thresholds, active reassessment, and vitals trend monitoring.
+*   `backend/audit/`
+    *   `audit_logger.py`: In-memory ledger tracking triage, overrides, deterioration, and disagreements.
+*   `backend/simulation/` (Stage 2)
+    *   `patient_generator.py`: Generates synthetic patients using archetypes.
+    *   `surge_simulator.py`: Manages surge volume and threshold adjustments.
+    *   `deterioration_simulator.py`: Injects vitals deterioration into waiting patients.
 
-### `backend/`
-- **What this folder does**: Contains the Python server, triage logic, queue, and audit systems.
-- **Why it exists**: Separates server-side logic from the client.
-- **Which part of the pipeline**: Core processing layer.
-- **What it connects to**: Exposed via REST API to the frontend.
+## Frontend
 
-### `frontend/`
-- **What this folder does**: Contains the Vanilla HTML/JS/CSS client application.
-- **Why it exists**: Provides the clinician-facing UI for input and overrides.
-- **Which part of the pipeline**: The user interface layer.
-- **What it connects to**: Calls the backend API.
+*   `frontend/index.html`: UI structure (Stage 2: modals for Add Patient, Override, Update Vitals, stats panel).
+*   `frontend/app.js`: UI logic and API communication.
+*   `frontend/style.css`: UI styling and animations.
 
-### `patient_data/`
-- **What this folder does**: Contains JSON schemas and simulated patient data.
-- **Why it exists**: Provides the deterministic dataset required for the prototype.
-- **Which part of the pipeline**: Data input/seeding.
-- **What it connects to**: Loaded by the backend/tests.
+## Patient Data
 
-### `tests/`
-- **What this folder does**: Contains test suites.
-- **Why it exists**: Ensures rules and uncertainty logic behave correctly.
+*   `patient_data/schemas/patient_schema.json`: JSON Schema for validation.
+*   `patient_data/seed/simulated_patients.json`: Pre-defined patients for legacy testing and surge mixing.
 
-### `docs/`
-- **What this folder does**: Contains high-level and low-level design documents.
-- **Why it exists**: Architectural reference.
+## Tests
 
-## Files
+*   `tests/unit/test_triage.py`: Comprehensive test suite for rules, ML features, reconciler, and queue thresholds.
 
-### `README.md`
-- **What**: High-level overview of the project.
-- **Why**: Standard entry point for any developer.
+## Documentation
 
-### `Conversation.md`
-- **What**: Permanent log of developer and agent interactions.
-- **Why**: Allows tracking how decisions evolved over time.
-
-### `changes.md`
-- **What**: A log of significant file-level changes.
-- **Why**: History of what changed and why.
-
-### `ProjectMap.md`
-- **What**: Map of the project (this file).
-- **Why**: Quick onboard for new developers.
-
-*(This file will be updated as we add more implementation files.)*
+*   `README.md`: Project summary and run instructions.
+*   `docs/stage1/`: Contains original HLD, LLD, and summaries from Stage 1.
+*   `docs/stage2/`: Contains updated HLD, LLD, `ARCHITECTURE.md`, `DECISIONS.md`, and `ML_ModelTraining.md` for Stage 2.
+*   `ProjectMap.md`: File map (this file).
+*   `Conversation.md`: Log of key accomplishments.

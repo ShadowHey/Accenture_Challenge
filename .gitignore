@@ -1,2 +1,17 @@
+# Virtual environments
 venv/
 .venv/
+env/
+.env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# macOS
+.DS_Store
+
+# Synthetic training data
+backend/ml/training/training_data.csv

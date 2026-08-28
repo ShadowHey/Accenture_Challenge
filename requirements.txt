@@ -2,3 +2,7 @@ fastapi
 uvicorn
 pydantic
 pytest
+scikit-learn
+joblib
+pandas
+numpy
