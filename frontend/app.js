@@ -287,51 +287,154 @@ document.getElementById('btn-add-patient').addEventListener('click', () => {
     document.getElementById('add-patient-modal').style.display = 'block';
 });
 
+// Toggle Logic
+const requiredFormFields = ['ap-name', 'ap-age', 'ap-gender', 'ap-complaint'];
+document.querySelectorAll('input[name="ap_mode"]').forEach(radio => {
+    radio.addEventListener('change', (e) => {
+        if (e.target.value === 'form') {
+            document.getElementById('ap-form-view').style.display = 'block';
+            document.getElementById('ap-json-view').style.display = 'none';
+            requiredFormFields.forEach(id => document.getElementById(id).setAttribute('required', 'true'));
+        } else {
+            document.getElementById('ap-form-view').style.display = 'none';
+            document.getElementById('ap-json-view').style.display = 'block';
+            requiredFormFields.forEach(id => document.getElementById(id).removeAttribute('required'));
+        }
+    });
+});
+
+// Copy Sample JSON Logic
+document.getElementById('btn-copy-sample').addEventListener('click', () => {
+    const sample = document.getElementById('ap-json-input').placeholder;
+    navigator.clipboard.writeText(sample).then(() => {
+        const btn = document.getElementById('btn-copy-sample');
+        const origText = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = origText, 2000);
+    });
+});
+
 document.getElementById('add-patient-form').addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const body = {
-        name: document.getElementById('ap-name').value,
-        age: parseInt(document.getElementById('ap-age').value),
-        gender: document.getElementById('ap-gender').value,
-        chief_complaint: document.getElementById('ap-complaint').value,
-        arrival_mode: document.getElementById('ap-arrival').value,
-        history_available: document.getElementById('ap-history').value === 'true',
-    };
+    const mode = document.querySelector('input[name="ap_mode"]:checked').value;
 
-    const hr = document.getElementById('ap-hr').value;
-    const bp = document.getElementById('ap-bp').value;
-    const spo2 = document.getElementById('ap-spo2').value;
-    const temp = document.getElementById('ap-temp').value;
-    const rr = document.getElementById('ap-rr').value;
-    const gcs = document.getElementById('ap-gcs').value;
-    const pain = document.getElementById('ap-pain').value;
+    if (mode === 'form') {
+        const body = {
+            name: document.getElementById('ap-name').value,
+            age: parseInt(document.getElementById('ap-age').value),
+            gender: document.getElementById('ap-gender').value,
+            chief_complaint: document.getElementById('ap-complaint').value,
+            arrival_mode: document.getElementById('ap-arrival').value,
+            history_available: document.getElementById('ap-history').value === 'true',
+        };
 
-    if (hr) body.heart_rate = parseInt(hr);
-    if (bp) body.blood_pressure = bp;
-    if (spo2) body.spo2 = parseInt(spo2);
-    if (temp) body.temperature = parseFloat(temp);
-    if (rr) body.respiratory_rate = parseInt(rr);
-    if (gcs) body.gcs = parseInt(gcs);
-    if (pain) body.pain_scale = parseInt(pain);
+        const hr = document.getElementById('ap-hr').value;
+        const bp = document.getElementById('ap-bp').value;
+        const spo2 = document.getElementById('ap-spo2').value;
+        const temp = document.getElementById('ap-temp').value;
+        const rr = document.getElementById('ap-rr').value;
+        const gcs = document.getElementById('ap-gcs').value;
+        const pain = document.getElementById('ap-pain').value;
 
-    const medHist = document.getElementById('ap-med-history').value;
-    body.medical_history = medHist ? medHist.split(',').map(s => s.trim()).filter(Boolean) : [];
+        if (hr) body.heart_rate = parseInt(hr);
+        if (bp) body.blood_pressure = bp;
+        if (spo2) body.spo2 = parseInt(spo2);
+        if (temp) body.temperature = parseFloat(temp);
+        if (rr) body.respiratory_rate = parseInt(rr);
+        if (gcs) body.gcs = parseInt(gcs);
+        if (pain) body.pain_scale = parseInt(pain);
 
-    const signs = document.getElementById('ap-signs').value;
-    body.observed_signs = signs ? signs.split(',').map(s => s.trim()).filter(Boolean) : [];
+        const medHist = document.getElementById('ap-med-history').value;
+        body.medical_history = medHist ? medHist.split(',').map(s => s.trim()).filter(Boolean) : [];
 
-    body.symptoms = [];
+        const signs = document.getElementById('ap-signs').value;
+        body.observed_signs = signs ? signs.split(',').map(s => s.trim()).filter(Boolean) : [];
 
-    await fetch(`${API_BASE}/patient`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-    });
+        body.symptoms = [];
 
-    document.getElementById('add-patient-modal').style.display = 'none';
-    document.getElementById('add-patient-form').reset();
-    refreshAll();
+        try {
+            await fetch(`${API_BASE}/patient`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            document.getElementById('add-patient-modal').style.display = 'none';
+            document.getElementById('add-patient-form').reset();
+            document.getElementById('ap-json-input').value = '';
+            refreshAll();
+        } catch (err) {
+            alert('Error adding patient: ' + err.message);
+        }
+
+    } else {
+        // JSON Mode
+        const rawInput = document.getElementById('ap-json-input').value.trim();
+        if (!rawInput) {
+            alert('Please paste or type JSON data.');
+            return;
+        }
+
+        // Strip JS-style comments: // and /* */
+        const strippedInput = rawInput.replace(/\/\/.*|\/\*[\s\S]*?\*\//g, '');
+        let parsedData;
+        try {
+            parsedData = JSON.parse(strippedInput);
+        } catch (err) {
+            alert(`Malformed JSON:\n${err.message}`);
+            return;
+        }
+
+        const patients = Array.isArray(parsedData) ? parsedData : [parsedData];
+        if (patients.length === 0) {
+            alert('No patients found in JSON.');
+            return;
+        }
+
+        // Validate required fields
+        for (let i = 0; i < patients.length; i++) {
+            const p = patients[i];
+            const requiredFields = ['name', 'age', 'gender', 'chief_complaint'];
+            for (const field of requiredFields) {
+                if (p[field] === undefined || p[field] === null || p[field] === '') {
+                    alert(`Validation Error in patient #${i + 1}:\nMissing required parameter '${field}'`);
+                    return;
+                }
+            }
+        }
+
+        try {
+            const apBtn = document.getElementById('ap-submit-btn');
+            const originalText = apBtn.textContent;
+            apBtn.textContent = 'Submitting...';
+            apBtn.disabled = true;
+
+            // Submit all patients concurrently
+            await Promise.all(patients.map(p => 
+                fetch(`${API_BASE}/patient`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(p)
+                }).then(res => {
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    return res.json();
+                })
+            ));
+
+            document.getElementById('add-patient-modal').style.display = 'none';
+            document.getElementById('add-patient-form').reset();
+            document.getElementById('ap-json-input').value = '';
+            refreshAll();
+            
+            apBtn.textContent = originalText;
+            apBtn.disabled = false;
+        } catch (err) {
+            alert('Error adding patients: ' + err.message);
+            const apBtn = document.getElementById('ap-submit-btn');
+            apBtn.textContent = 'Submit Patient';
+            apBtn.disabled = false;
+        }
+    }
 });
 
 // ─── Override Modal ────────────────────────────────────────────────────────────
