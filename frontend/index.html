@@ -3,34 +3,180 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PatientTriage.ai</title>
+    <title>PatientTriage.ai — Stage 2</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <header>
-        <h1>PatientTriage.ai - Prototype</h1>
+        <h1>🏥 PatientTriage.ai <span class="stage-badge">Stage 2 — Hybrid ML</span></h1>
         <div class="actions">
-            <button id="btn-surge" class="btn-warning">Simulate Surge (Load Patients)</button>
-            <button id="btn-clear" class="btn-danger">Clear Data</button>
+            <button id="btn-add-patient" class="btn-primary">+ Add Patient</button>
+            <button id="btn-surge-seed" class="btn-warning">Load Seed Patients</button>
+            <button id="btn-surge-3x" class="btn-danger">Simulate Surge (3×)</button>
+            <button id="btn-deteriorate" class="btn-warning">Simulate Deterioration</button>
+            <button id="btn-surge-stop" class="btn-secondary" style="display:none;">Stop Surge</button>
+            <button id="btn-clear" class="btn-secondary">Clear All</button>
         </div>
     </header>
+
+    <!-- Stats Panel -->
+    <div id="stats-panel" class="stats-panel">
+        <div class="stat-card">
+            <span class="stat-value" id="stat-total">0</span>
+            <span class="stat-label">Total Patients</span>
+        </div>
+        <div class="stat-card level-1-bg">
+            <span class="stat-value" id="stat-l1">0</span>
+            <span class="stat-label">Level 1</span>
+        </div>
+        <div class="stat-card level-2-bg">
+            <span class="stat-value" id="stat-l2">0</span>
+            <span class="stat-label">Level 2</span>
+        </div>
+        <div class="stat-card level-3-bg">
+            <span class="stat-value" id="stat-l3">0</span>
+            <span class="stat-label">Level 3</span>
+        </div>
+        <div class="stat-card level-4-bg">
+            <span class="stat-value" id="stat-l4">0</span>
+            <span class="stat-label">Level 4</span>
+        </div>
+        <div class="stat-card level-5-bg">
+            <span class="stat-value" id="stat-l5">0</span>
+            <span class="stat-label">Level 5</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value" id="stat-avg-wait">0s</span>
+            <span class="stat-label">Avg Wait</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value" id="stat-ml-agree">—</span>
+            <span class="stat-label">ML Agreement</span>
+        </div>
+        <div class="stat-card" id="surge-indicator" style="display:none;">
+            <span class="stat-value">⚡</span>
+            <span class="stat-label">SURGE MODE</span>
+        </div>
+    </div>
 
     <main>
         <section id="queue-section">
             <h2>Waiting Queue</h2>
             <div id="queue-container"></div>
         </section>
-        
+
         <section id="audit-section">
             <h2>Audit Log</h2>
+            <div class="audit-filter">
+                <select id="audit-filter-type">
+                    <option value="">All Events</option>
+                    <option value="TRIAGE">Triage</option>
+                    <option value="RETRIAGE">Re-triage</option>
+                    <option value="OVERRIDE">Override</option>
+                    <option value="DISAGREEMENT">Disagreement</option>
+                    <option value="DETERIORATION">Deterioration</option>
+                    <option value="SURGE">Surge</option>
+                    <option value="DISCHARGE">Discharge</option>
+                </select>
+            </div>
             <div id="audit-container"></div>
         </section>
     </main>
 
-    <!-- Modal for Clinician Override -->
+    <!-- Modal: Add Patient -->
+    <div id="add-patient-modal" class="modal">
+        <div class="modal-content modal-large">
+            <span class="close-btn" data-modal="add-patient-modal">&times;</span>
+            <h2>Add New Patient</h2>
+            <form id="add-patient-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Name *</label>
+                        <input type="text" id="ap-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Age *</label>
+                        <input type="number" id="ap-age" min="0" max="120" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Gender *</label>
+                        <select id="ap-gender" required>
+                            <option value="M">Male</option>
+                            <option value="F">Female</option>
+                            <option value="O">Other</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Chief Complaint *</label>
+                    <input type="text" id="ap-complaint" required placeholder="e.g. Chest pain, shortness of breath">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Heart Rate (bpm)</label>
+                        <input type="number" id="ap-hr" min="0" max="300">
+                    </div>
+                    <div class="form-group">
+                        <label>Blood Pressure</label>
+                        <input type="text" id="ap-bp" placeholder="e.g. 120/80">
+                    </div>
+                    <div class="form-group">
+                        <label>SpO2 (%)</label>
+                        <input type="number" id="ap-spo2" min="0" max="100">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Temperature (°C)</label>
+                        <input type="number" id="ap-temp" step="0.1" min="30" max="45">
+                    </div>
+                    <div class="form-group">
+                        <label>Resp. Rate</label>
+                        <input type="number" id="ap-rr" min="0" max="80">
+                    </div>
+                    <div class="form-group">
+                        <label>GCS (3-15)</label>
+                        <input type="number" id="ap-gcs" min="3" max="15">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Pain Scale (0-10)</label>
+                        <input type="number" id="ap-pain" min="0" max="10">
+                    </div>
+                    <div class="form-group">
+                        <label>Arrival Mode</label>
+                        <select id="ap-arrival">
+                            <option value="walk-in">Walk-in</option>
+                            <option value="ambulance">Ambulance</option>
+                            <option value="helicopter">Helicopter</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>History Available</label>
+                        <select id="ap-history">
+                            <option value="false">No</option>
+                            <option value="true">Yes</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Medical History (comma-separated)</label>
+                    <input type="text" id="ap-med-history" placeholder="e.g. Hypertension, Diabetes">
+                </div>
+                <div class="form-group">
+                    <label>Observed Signs (comma-separated)</label>
+                    <input type="text" id="ap-signs" placeholder="e.g. Pale, Sweating, Alert">
+                </div>
+                <button type="submit" class="btn-primary" style="width:100%;margin-top:15px;">Submit Patient</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Clinician Override -->
     <div id="override-modal" class="modal">
         <div class="modal-content">
-            <span class="close-btn">&times;</span>
+            <span class="close-btn" data-modal="override-modal">&times;</span>
             <h2>Clinician Override</h2>
             <p>Patient ID: <span id="override-patient-id"></span></p>
             <p>Current Priority: <span id="override-current-prio"></span></p>
@@ -48,16 +194,22 @@
         </div>
     </div>
 
-    <!-- Modal for Vitals Update -->
+    <!-- Modal: Update Vitals -->
     <div id="vitals-modal" class="modal">
         <div class="modal-content">
-            <span class="close-btn-vitals">&times;</span>
-            <h2>Update Vitals (Simulate Deterioration)</h2>
+            <span class="close-btn" data-modal="vitals-modal">&times;</span>
+            <h2>Update Vitals (Simulate Change)</h2>
             <p>Patient ID: <span id="vitals-patient-id"></span></p>
-            <label>Heart Rate:</label>
+            <label>Heart Rate (bpm):</label>
             <input type="number" id="vitals-hr" />
             <label>SpO2 (%):</label>
             <input type="number" id="vitals-spo2" />
+            <label>Temperature (°C):</label>
+            <input type="number" id="vitals-temp" step="0.1" />
+            <label>Resp. Rate:</label>
+            <input type="number" id="vitals-rr" />
+            <label>GCS (3-15):</label>
+            <input type="number" id="vitals-gcs" min="3" max="15" />
             <button id="btn-submit-vitals" class="btn-primary">Update Vitals</button>
         </div>
     </div>

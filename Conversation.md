@@ -1,16 +1,19 @@
-# Conversation History
+# Conversation & Project Log
 
-## 2026-08-27
-- **Developer Request**: Build the simplest working prototype for PatientTriage.ai (Stage 1).
-- **Agent Understanding**: Need to build a basic triage system with a Python/FastAPI backend and Vanilla JS frontend. It requires simulated patients, deterministic rules, uncertainty scoring, basic safety escalation, queue monitoring, and clinician override. The architecture should be simple and modular without overengineering.
-- **Files Inspected**: Empty repository initially.
-- **Work Performed**: Initialized the directory structure, created initial documentation files (`README.md`, `Conversation.md`, `changes.md`, `ProjectMap.md`).
-- **Important Decisions**: Python backend (FastAPI) and Vanilla JS frontend with no DB (in-memory storage for Stage 1) to keep the prototype extremely simple.
-- **Problems Encountered**: None yet.
-- **Next Step**: Create simulated patient data (Step 2).
+## Stage 1
+*   **Goal**: Create a basic functional prototype for PatientTriage.ai.
+*   **Status**: Completed. Basic rules engine, queue monitor, audit logger, and frontend established.
 
-- **Work Performed**: Completed Step 1 (setup) and Step 2 (simulated data). Created a JSON schema and seeded 20 diverse simulated patients in .
-- **Next Step**: Implement the core triage engine (validation, rules, uncertainty, explanation) in Python.
-
-- **Work Performed**: Completed Stage 1. Implemented Triage Engine, Queue Monitor, Audit Logger, FastAPI backend, Vanilla JS frontend, and unit tests. Wrote HLD, LLD, and Stage1.md summary.
-- **Next Step**: Wait for further instructions (Stage 2).
+## Stage 2
+*   **Goal**: Evolve the prototype with a hybrid ML triage engine, advanced queue management, and simulation capabilities.
+*   **Accomplishments**:
+    *   **Data Models**: Enhanced `Vitals`, `PatientInput`, and `TriageResult` to capture advanced clinical metrics (GCS, pain scale, systolic/diastolic BP, symptoms).
+    *   **Rules Engine V2**: Refactored to use age-stratified thresholds (Pediatric, Adult, Geriatric) ensuring age-appropriate sensitivity. Enhanced the uncertainty calculator to automatically flag ambiguous cases.
+    *   **ML Module**: Implemented a local `scikit-learn` `GradientBoostingClassifier` for advisory severity predictions. 
+    *   **Reconciler**: Engineered a safety invariant: ML can escalate severity but can *never* override the rules-established safety floor. Disagreements are logged.
+    *   **Queue Engine V2**: Replaced static queue with active reassessment, tracking patients against severity-based wait thresholds and monitoring vitals for deterioration.
+    *   **Simulation Engine**: Added capability to procedurally generate patients based on clinical archetypes, trigger 3x surge volumes, and inject clinical deterioration.
+    *   **API & UI**: Expanded REST API. Frontend modernized with modals, statistical summaries, a ML confidence bar, and operational controls (surge, deterioration, discharge).
+    *   **Audit Logging**: Expanded to capture retriage, clinician overrides, and ML-vs-Rules disagreements.
+    *   **Testing**: Added comprehensive unit tests covering the entire enhanced pipeline.
+*   **Status**: Stage 2 Implementation Complete.
