@@ -13,9 +13,13 @@
       "properties": {
         "heart_rate": { "type": "integer" },
         "blood_pressure": { "type": "string" },
+        "systolic_bp": { "type": "integer" },
+        "diastolic_bp": { "type": "integer" },
         "respiratory_rate": { "type": "integer" },
         "temperature": { "type": "number" },
-        "spo2": { "type": "integer" }
+        "spo2": { "type": "integer" },
+        "gcs": { "type": "integer", "minimum": 3, "maximum": 15 },
+        "pain_scale": { "type": "integer", "minimum": 0, "maximum": 10 }
       }
     },
     "history_available": { "type": "boolean" },
@@ -24,6 +28,11 @@
       "items": { "type": "string" }
     },
     "observed_signs": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "arrival_mode": { "type": "string", "enum": ["walk-in", "ambulance", "helicopter"] },
+    "symptoms": {
       "type": "array",
       "items": { "type": "string" }
     }
