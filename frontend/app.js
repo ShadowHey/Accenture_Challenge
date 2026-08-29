@@ -1,12 +1,48 @@
 const API_BASE = '/api';
 
+// ─── State ─────────────────────────────────────────────────────────────────────
+const activeFilters = new Set();
+let autoDischargeIntervalId = null;
+let isAutoDischargeOn = false;
+
+document.getElementById('queue-filters').addEventListener('click', (e) => {
+    if (e.target.classList.contains('filter-btn')) {
+        if (e.target.id === 'btn-clear-filters') {
+            activeFilters.clear();
+            document.querySelectorAll('#queue-filters .filter-btn').forEach(btn => btn.classList.remove('active'));
+        } else {
+            const filterValue = e.target.getAttribute('data-filter');
+            if (activeFilters.has(filterValue)) {
+                activeFilters.delete(filterValue);
+                e.target.classList.remove('active');
+            } else {
+                activeFilters.add(filterValue);
+                e.target.classList.add('active');
+            }
+        }
+        fetchQueue();
+    }
+});
+
 // ─── Data Fetching ─────────────────────────────────────────────────────────────
 
 async function fetchQueue() {
     try {
         const res = await fetch(`${API_BASE}/queue`);
         const data = await res.json();
-        renderQueue(data);
+        
+        let filteredData = data;
+        if (activeFilters.size > 0) {
+            filteredData = data.filter(item => {
+                const priority = item.triage_result.priority;
+                const source = item.triage_result.source;
+                const isLevelMatch = activeFilters.has(priority);
+                const isClinicianMatch = activeFilters.has('CLINICIAN_REVIEW_REQUIRED') && source === 'CLINICIAN_REVIEW_REQUIRED';
+                return isLevelMatch || isClinicianMatch;
+            });
+        }
+        
+        renderQueue(filteredData);
     } catch (e) { console.error('Failed to fetch queue:', e); }
 }
 
@@ -306,6 +342,58 @@ document.getElementById('btn-clear').addEventListener('click', async () => {
     refreshAll();
 });
 
+// ─── Auto Discharge Logic ──────────────────────────────────────────────────────
+
+function stopAutoDischarge() {
+    if (autoDischargeIntervalId) {
+        clearInterval(autoDischargeIntervalId);
+        autoDischargeIntervalId = null;
+    }
+}
+
+function startAutoDischarge() {
+    stopAutoDischarge();
+    const intervalSec = parseInt(document.getElementById('auto-discharge-interval').value) || 5;
+    
+    autoDischargeIntervalId = setInterval(async () => {
+        try {
+            const res = await fetch(`${API_BASE}/queue`);
+            const queueData = await res.json();
+            
+            if (queueData && queueData.length > 0) {
+                const topPatientId = queueData[0].patient.id;
+                await fetch(`${API_BASE}/queue/${topPatientId}/discharge`, { method: 'POST' });
+                refreshAll();
+            }
+        } catch (e) {
+            console.error('Auto discharge error:', e);
+        }
+    }, intervalSec * 1000);
+}
+
+document.getElementById('btn-auto-discharge').addEventListener('click', (e) => {
+    isAutoDischargeOn = !isAutoDischargeOn;
+    const btn = e.target;
+    
+    if (isAutoDischargeOn) {
+        btn.textContent = 'Auto Discharge: ON';
+        btn.classList.remove('btn-secondary');
+        btn.classList.add('btn-primary');
+        startAutoDischarge();
+    } else {
+        btn.textContent = 'Auto Discharge: OFF';
+        btn.classList.remove('btn-primary');
+        btn.classList.add('btn-secondary');
+        stopAutoDischarge();
+    }
+});
+
+document.getElementById('auto-discharge-interval').addEventListener('change', () => {
+    if (isAutoDischargeOn) {
+        startAutoDischarge();
+    }
+});
+
 // ─── Add Patient Modal ─────────────────────────────────────────────────────────
 
 document.getElementById('btn-add-patient').addEventListener('click', () => {
@@ -601,4 +689,225 @@ if (hQueueContainer && sharedTooltip) {
             sharedTooltip.classList.remove('visible');
         }
     });
+}
+
+// --- Chatbot Logic ---
+const chatWidget = document.getElementById("chat-widget");
+const chatToggleBtn = document.getElementById("chat-toggle-btn");
+const chatBody = document.getElementById("chat-body");
+const chatInput = document.getElementById("chat-input");
+const chatSendBtn = document.getElementById("chat-send-btn");
+
+// Chat states
+const CHAT_STATE = {
+    IDLE: "IDLE",
+    SELECT_PATIENT: "SELECT_PATIENT",
+    AWAIT_VITALS: "AWAIT_VITALS"
+};
+
+let currentChatState = CHAT_STATE.IDLE;
+let selectedChatPatientId = null;
+let currentMatches = [];
+
+const btnOpenRhea = document.getElementById("btn-open-rhea");
+
+// Toggle Chat
+btnOpenRhea.addEventListener("click", () => {
+    chatWidget.classList.remove("closed");
+});
+
+chatToggleBtn.addEventListener("click", () => {
+    chatWidget.classList.add("closed");
+});
+
+// Draggable Logic
+const chatHeader = document.querySelector(".chat-header");
+let isDragging = false;
+let offsetX, offsetY;
+
+chatHeader.addEventListener("mousedown", (e) => {
+    if (e.target.id === "chat-toggle-btn") return; // Don't drag if clicking close button
+    isDragging = true;
+    
+    // Get the current computed style to handle 'right' vs 'left' transition
+    const rect = chatWidget.getBoundingClientRect();
+    
+    // Set explicit left and top instead of right so dragging is smooth
+    chatWidget.style.left = rect.left + "px";
+    chatWidget.style.top = rect.top + "px";
+    chatWidget.style.right = "auto";
+    chatWidget.style.bottom = "auto";
+    
+    // Disable CSS transitions while dragging to prevent lag
+    chatWidget.style.transition = "none";
+    
+    offsetX = e.clientX - rect.left;
+    offsetY = e.clientY - rect.top;
+});
+
+document.addEventListener("mousemove", (e) => {
+    if (!isDragging) return;
+    
+    // Calculate new position
+    let newX = e.clientX - offsetX;
+    let newY = e.clientY - offsetY;
+    
+    // Optional: Constrain to window bounds
+    newX = Math.max(0, Math.min(newX, window.innerWidth - chatWidget.offsetWidth));
+    newY = Math.max(0, Math.min(newY, window.innerHeight - chatWidget.offsetHeight));
+    
+    chatWidget.style.left = newX + "px";
+    chatWidget.style.top = newY + "px";
+});
+
+document.addEventListener("mouseup", () => {
+    if (isDragging) {
+        isDragging = false;
+        // Re-enable transitions for the open/close animations
+        chatWidget.style.transition = "opacity 0.3s ease, transform 0.3s ease";
+    }
+});
+
+// UI Helpers
+function addChatMessage(text, sender, isHtml=false) {
+    const msgDiv = document.createElement("div");
+    msgDiv.className = `chat-message ${sender}`;
+    if (isHtml) {
+        msgDiv.innerHTML = text;
+    } else {
+        msgDiv.textContent = text;
+    }
+    chatBody.appendChild(msgDiv);
+    chatBody.scrollTop = chatBody.scrollHeight;
+}
+
+// Initialization
+function resetChat(isInitial = false) {
+    currentChatState = CHAT_STATE.IDLE;
+    selectedChatPatientId = null;
+    currentMatches = [];
+    
+    if (isInitial) {
+        chatBody.innerHTML = "";
+        addChatMessage("Hi I am Rhea your chat assistant. Which patient information do you want to update? Enter the patient name or ID.", "bot");
+    } else {
+        addChatMessage("Please enter the next patient's name or ID to update their vitals.", "bot");
+    }
+}
+
+resetChat(true); // Initialize on load
+
+// Handle input
+async function handleChatInput() {
+    const text = chatInput.value.trim();
+    if (!text) return;
+    
+    addChatMessage(text, "user");
+    chatInput.value = "";
+    
+    if (currentChatState === CHAT_STATE.IDLE) {
+        await handlePatientSearch(text);
+    } else if (currentChatState === CHAT_STATE.AWAIT_VITALS) {
+        await handleVitalsUpdate(text);
+    }
+}
+
+chatSendBtn.addEventListener("click", handleChatInput);
+chatInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") handleChatInput();
+});
+
+async function handlePatientSearch(query) {
+    try {
+        const res = await fetch(`/api/chat/patients?name=${encodeURIComponent(query)}`);
+        const data = await res.json();
+        const matches = data.matches || [];
+        
+        if (matches.length === 0) {
+            addChatMessage(`No patient found for "${query}". Please try again.`, "bot");
+        } else if (matches.length === 1) {
+            selectPatientForChat(matches[0].id, matches[0].name);
+        } else {
+            // Multiple matches
+            let html = `We have ${matches.length} matches. Select which one you want to update:<br>`;
+            matches.forEach((m, idx) => {
+                html += `<button class="chat-action-btn" onclick="selectPatientForChat('${m.id}', '${m.name}')">${idx+1}. ${m.name}, ${m.gender}, ${m.age}</button>`;
+            });
+            currentMatches = matches;
+            currentChatState = CHAT_STATE.SELECT_PATIENT;
+            addChatMessage(html, "bot", true);
+        }
+    } catch (err) {
+        console.error("Chat search error:", err);
+        addChatMessage("Error searching for patient.", "bot");
+    }
+}
+
+window.selectPatientForChat = function(id, name) {
+    selectedChatPatientId = id;
+    currentChatState = CHAT_STATE.AWAIT_VITALS;
+    addChatMessage(`Okay, please update vitals for ${name}.`, "bot");
+};
+
+async function handleVitalsUpdate(text) {
+    try {
+        addChatMessage("Extracting vitals...", "bot");
+        const res = await fetch("/api/chat/extract_vitals", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text })
+        });
+        const data = await res.json();
+        const vitals = data.extracted;
+        
+        if (!vitals || Object.keys(vitals).length === 0) {
+            addChatMessage("I couldn't understand any vitals from that. Please try again.", "bot");
+            return;
+        }
+        
+        let confirmText = "Updating with: ";
+        const updates = [];
+        for (const [k, v] of Object.entries(vitals)) {
+            updates.push(`${k}: ${v}`);
+        }
+        confirmText += updates.join(", ");
+        addChatMessage(confirmText, "bot");
+        
+        // Construct the update payload to match VitalsUpdateRequest
+        const payload = { patient_id: selectedChatPatientId };
+        if (vitals.heart_rate !== undefined) payload.heart_rate = vitals.heart_rate;
+        if (vitals.blood_pressure !== undefined) payload.blood_pressure = vitals.blood_pressure;
+        if (vitals.spo2 !== undefined) payload.spo2 = vitals.spo2;
+        if (vitals.temperature !== undefined) payload.temperature = vitals.temperature;
+        if (vitals.respiratory_rate !== undefined) payload.respiratory_rate = vitals.respiratory_rate;
+        if (vitals.gcs !== undefined) payload.gcs = vitals.gcs;
+        
+        // Submit the vitals
+        const updateRes = await fetch("/api/queue/vitals", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        
+        if (updateRes.ok) {
+            const updateData = await updateRes.json();
+            if (updateData.escalation_triggered) {
+                addChatMessage("Vitals updated successfully! Critical deterioration detected, triage escalated.", "bot");
+            } else {
+                addChatMessage("Vitals updated successfully.", "bot");
+            }
+            // Refresh dashboard
+            fetchQueue();
+            
+            // Ask for next
+            setTimeout(() => {
+                resetChat();
+            }, 2000);
+        } else {
+            addChatMessage("Failed to update vitals.", "bot");
+        }
+    } catch (err) {
+        console.error("Chat extract error:", err);
+        addChatMessage("Error extracting vitals.", "bot");
+    }
 }
