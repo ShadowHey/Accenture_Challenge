@@ -61,6 +61,12 @@
 
     <main>
         <section id="queue-section">
+            <div class="hq-wrapper" id="hq-wrapper" style="display: none;">
+                <div class="hq-title-box">
+                    WAITING<br>QUEUE
+                </div>
+                <div class="horizontal-queue" id="horizontal-queue-container"></div>
+            </div>
             <h2>Waiting Queue</h2>
             <div id="queue-container"></div>
         </section>
@@ -265,6 +271,9 @@
             <button id="btn-submit-vitals" class="btn-primary">Update Vitals</button>
         </div>
     </div>
+
+    <!-- Shared Tooltip for Horizontal Queue -->
+    <div id="shared-hq-tooltip" class="shared-hq-tooltip"></div>
 
     <script src="app.js"></script>
 </body>

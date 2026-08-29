@@ -61,12 +61,19 @@ function renderStats(stats) {
 
 function renderQueue(queue) {
     const container = document.getElementById('queue-container');
+    const hContainer = document.getElementById('horizontal-queue-container');
+    const hWrapper = document.getElementById('hq-wrapper');
+    
     container.innerHTML = '';
+    hContainer.innerHTML = '';
 
     if (queue.length === 0) {
         container.innerHTML = '<p class="empty-state">No patients in queue. Click "Add Patient" or "Load Seed Patients" to begin.</p>';
+        if (hWrapper) hWrapper.style.display = 'none';
         return;
     }
+    
+    if (hWrapper) hWrapper.style.display = 'flex';
 
     queue.forEach(item => {
         const p = item.patient;
@@ -181,6 +188,24 @@ function renderQueue(queue) {
             </div>
         `;
         container.appendChild(card);
+        
+        // --- Horizontal Queue Item ---
+        const hCard = document.createElement('div');
+        hCard.className = `horizontal-queue-item level-${tr.priority.split(' ')[1]}`;
+        const genderFull = p.gender === 'M' ? 'Male' : (p.gender === 'F' ? 'Female' : 'Other');
+        hCard.innerHTML = `
+            <div class="hq-name">${p.name}</div>
+            <div class="hq-gender">${genderFull}</div>
+            <div class="hq-age">${p.age}</div>
+            <div class="hq-id">${p.id}</div>
+            <div class="hq-tooltip-data" style="display: none;">
+                <strong>Complaint:</strong> ${p.chief_complaint}<br>
+                <strong>Vitals:</strong> ${vitalsHtml || 'No vitals'}<br>
+                <strong>Priority:</strong> ${tr.priority}<br>
+                <strong>Wait:</strong> ${waitDisplay}
+            </div>
+        `;
+        if (hContainer) hContainer.appendChild(hCard);
     });
 }
 
@@ -548,3 +573,32 @@ setInterval(refreshAll, 3000);
 
 // Init
 refreshAll();
+
+// ─── Shared Horizontal Queue Tooltip ───────────────────────────────────────────
+const hQueueContainer = document.getElementById('horizontal-queue-container');
+const sharedTooltip = document.getElementById('shared-hq-tooltip');
+
+if (hQueueContainer && sharedTooltip) {
+    hQueueContainer.addEventListener('mouseover', (e) => {
+        const card = e.target.closest('.horizontal-queue-item');
+        if (card) {
+            const dataDiv = card.querySelector('.hq-tooltip-data');
+            if (dataDiv) {
+                sharedTooltip.innerHTML = dataDiv.innerHTML;
+                const rect = card.getBoundingClientRect();
+                sharedTooltip.style.left = `${rect.left + rect.width / 2}px`;
+                // Position above the card, centering via transform
+                sharedTooltip.style.top = `${rect.top + window.scrollY - 10}px`;
+                sharedTooltip.style.transform = 'translate(-50%, -100%)';
+                sharedTooltip.classList.add('visible');
+            }
+        }
+    });
+
+    hQueueContainer.addEventListener('mouseout', (e) => {
+        const card = e.target.closest('.horizontal-queue-item');
+        if (card) {
+            sharedTooltip.classList.remove('visible');
+        }
+    });
+}
