@@ -64,7 +64,8 @@ class QueueMonitor:
 
     def update_vitals(self, patient_id: str, new_hr: Optional[int] = None,
                       new_spo2: Optional[int] = None, new_temp: Optional[float] = None,
-                      new_rr: Optional[int] = None, new_gcs: Optional[int] = None):
+                      new_rr: Optional[int] = None, new_gcs: Optional[int] = None,
+                      new_bp: Optional[str] = None):
         """Update patient vitals and detect worsening."""
         if patient_id not in self.queue:
             return
@@ -79,6 +80,10 @@ class QueueMonitor:
             elif new_hr > 120:
                 worsening = True
             item.patient.vitals.heart_rate = new_hr
+            
+        if new_bp is not None:
+            # We don't have complex BP worsening rules here yet, but we update it
+            item.patient.vitals.blood_pressure = new_bp
 
         if new_spo2 is not None:
             old_spo2 = item.patient.vitals.spo2

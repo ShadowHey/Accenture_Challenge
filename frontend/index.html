@@ -15,6 +15,14 @@
             <button id="btn-surge-3x" class="btn-danger">Simulate Surge (3×)</button>
             <button id="btn-deteriorate" class="btn-warning">Simulate Deterioration</button>
             <button id="btn-surge-stop" class="btn-secondary" style="display:none;">Stop Surge</button>
+            <div class="auto-discharge-wrapper">
+                <button id="btn-auto-discharge" class="btn-secondary">Auto Discharge: OFF</button>
+                <div class="auto-discharge-popover">
+                    <label>Interval (s):
+                        <input type="number" id="auto-discharge-interval" value="5" min="1" style="width: 50px;">
+                    </label>
+                </div>
+            </div>
             <button id="btn-clear" class="btn-secondary">Clear All</button>
         </div>
     </header>
@@ -57,6 +65,9 @@
             <span class="stat-value">⚡</span>
             <span class="stat-label">SURGE MODE</span>
         </div>
+        <div class="chat-trigger-container">
+            <button id="btn-open-rhea" class="btn-primary">💬 Open Rhea</button>
+        </div>
     </div>
 
     <main>
@@ -67,7 +78,18 @@
                 </div>
                 <div class="horizontal-queue" id="horizontal-queue-container"></div>
             </div>
-            <h2>Waiting Queue</h2>
+            <div class="queue-header-container">
+                <h2>Waiting Queue</h2>
+                <div class="queue-filters" id="queue-filters">
+                    <span class="filter-btn filter-l1" data-filter="LEVEL 1">Level 1</span>
+                    <span class="filter-btn filter-l2" data-filter="LEVEL 2">Level 2</span>
+                    <span class="filter-btn filter-l3" data-filter="LEVEL 3">Level 3</span>
+                    <span class="filter-btn filter-l4" data-filter="LEVEL 4">Level 4</span>
+                    <span class="filter-btn filter-l5" data-filter="LEVEL 5">Level 5</span>
+                    <span class="filter-btn filter-clinician" data-filter="CLINICIAN_REVIEW_REQUIRED">Clinician Review Required</span>
+                    <span class="filter-btn filter-clear" id="btn-clear-filters">Clear All</span>
+                </div>
+            </div>
             <div id="queue-container"></div>
         </section>
 
@@ -287,6 +309,21 @@
             <label>GCS (3-15):</label>
             <input type="number" id="vitals-gcs" min="3" max="15" />
             <button id="btn-submit-vitals" class="btn-primary">Update Vitals</button>
+        </div>
+    </div>
+
+    <!-- Chatbot Widget -->
+    <div id="chat-widget" class="chat-widget closed">
+        <div class="chat-header">
+            <h3>Rhea, Your Chat Assistant</h3>
+            <button id="chat-toggle-btn">✕</button>
+        </div>
+        <div class="chat-body" id="chat-body">
+            <!-- Messages go here -->
+        </div>
+        <div class="chat-footer">
+            <input type="text" id="chat-input" placeholder="Type a message..." autocomplete="off">
+            <button id="chat-send-btn">Send</button>
         </div>
     </div>
 

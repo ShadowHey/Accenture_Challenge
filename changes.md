@@ -25,3 +25,13 @@
   - **Why**: To provide a space-efficient, at-a-glance view of the waiting room triage queue for clinicians and administrators.
   - **Impact**: Enhances dashboard usability and situational awareness in high-volume surge scenarios.
   - **Tests**: Manually tested frontend rendering and tooltip positioning.
+
+### Code Changes (Update - 2:45 PM)
+- **`backend/nlp_parser.py`** [NEW]: Created a natural language processing module that extracts structured vital signs (HR, BP, SpO2, Temp, RR) from unstructured conversational text using Regex and fuzzy matching (`difflib`).
+  - **Why**: To allow clinicians to quickly update patient vitals by typing naturally instead of filling out rigid forms.
+  - **Impact**: Dramatically speeds up data entry and integrates seamlessly with the Rhea Chatbot.
+- **`backend/main.py`**: Added new API endpoints to handle Rhea AI chatbot interactions and route text to the `nlp_parser`.
+- **`frontend/app.js`, `frontend/index.html`, `frontend/style.css`**: Integrated the 'Rhea' AI Chatbot UI into the dashboard. Added interactive Queue Filters to allow sorting patients by priority level (L1-L5) or 'Clinician Review'.
+  - **Why**: To improve dashboard usability. Clinicians need to immediately filter the queue during surges or rapidly update vitals via chat.
+  - **Impact**: Provides a major UX improvement and makes the system feel more intelligent and responsive.
+- **`tests/unit/test_triage.py`**: Updated unit tests to accurately validate the newly refined age-stratified rules and 400-dimension ML features.
