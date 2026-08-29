@@ -20,6 +20,18 @@ async function fetchAudit() {
     } catch (e) { console.error('Failed to fetch audit:', e); }
 }
 
+let allCompletedPatients = [];
+async function fetchCompleted() {
+    try {
+        const res = await fetch(`${API_BASE}/completed`);
+        const data = await res.json();
+        if (JSON.stringify(data) !== JSON.stringify(allCompletedPatients)) {
+            allCompletedPatients = data;
+            renderCompleted();
+        }
+    } catch (e) { console.error('Failed to fetch completed patients:', e); }
+}
+
 async function fetchStats() {
     try {
         const res = await fetch(`${API_BASE}/stats`);
@@ -566,6 +578,7 @@ function refreshAll() {
     fetchQueue();
     fetchAudit();
     fetchStats();
+    fetchCompleted();
 }
 
 // Polling
@@ -602,3 +615,354 @@ if (hQueueContainer && sharedTooltip) {
         }
     });
 }
+
+function renderCompleted() {
+    const container = document.getElementById('completed-container');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    const query = (document.getElementById('completed-search').value || '').toLowerCase();
+    
+    const filtered = allCompletedPatients.filter(item => {
+        const p = item.patient;
+        return p.name.toLowerCase().includes(query) || 
+               p.id.toLowerCase().includes(query) || 
+               p.chief_complaint.toLowerCase().includes(query);
+    });
+
+    if (filtered.length === 0) {
+        container.innerHTML = '<div class="empty-state">No completed patients found.</div>';
+        return;
+    }
+
+    filtered.forEach(item => {
+        const p = item.patient;
+        const tr = item.triage_result;
+        
+        const card = document.createElement('div');
+        card.className = `patient-card level-${tr.priority.split(' ')[1]}`;
+        card.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px;">
+                <div>
+                    <div style="font-weight: bold; font-size: 15px;">${p.name}</div>
+                    <div style="color: #666; font-size: 12px;">${p.id}</div>
+                </div>
+                <div style="font-weight: bold; font-size: 11px; padding: 2px 6px; border-radius: 4px;" class="priority-badge level-${tr.priority.split(' ')[1]}">${tr.priority}</div>
+            </div>
+            <div style="margin-top: 10px; display: flex; gap: 5px; align-items: center; justify-content: space-between;">
+                <div>
+                    <button class="btn-primary btn-sm" onclick="openReviewModal('${p.id}')">Review</button>
+                    <button class="btn-secondary btn-sm" onclick="downloadHandoff('${p.id}')">Download</button>
+                </div>
+                <div class="dropdown">
+                    <button class="dropdown-btn" onclick="const content = this.nextElementSibling; const isVisible = content.style.display === 'block'; document.querySelectorAll('.dropdown-content').forEach(el => el.style.display = 'none'); content.style.display = isVisible ? 'none' : 'block'; event.stopPropagation();">&#8942;</button>
+                    <div class="dropdown-content" style="text-align: left;">
+                        <a href="#" onclick="archivePatient('${p.id}'); return false;" style="color: #dc3545;">Archive</a>
+                    </div>
+                </div>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+}
+
+const searchEl = document.getElementById('completed-search');
+if(searchEl) searchEl.addEventListener('input', renderCompleted);
+
+window.archivePatient = async function(patientId) {
+    if (!confirm('Archive this completed patient?\n\nThis will remove the patient from the Completed Patients list.')) return;
+    try {
+        await fetch(`${API_BASE}/completed/${patientId}/archive`, { method: 'POST' });
+        refreshAll();
+    } catch(e) {
+        alert('Failed to archive patient.');
+    }
+};
+
+window.openReviewModal = async function(patientId) {
+    const item = allCompletedPatients.find(x => x.patient.id === patientId);
+    if (!item) return;
+    const p = item.patient;
+    const tr = item.triage_result;
+    
+    let auditLogs = [];
+    try {
+        const res = await fetch(`${API_BASE}/audit`);
+        const logs = await res.json();
+        auditLogs = logs.filter(l => l.patient_id === patientId);
+    } catch(e) {}
+
+    let auditHtml = auditLogs.length === 0 ? '<p>No events recorded.</p>' : 
+        '<ul style="padding-left: 20px;">' + auditLogs.map(log => {
+            const timeStr = new Date(log.timestamp * 1000).toLocaleTimeString();
+            let detailStr = '';
+            if (log.event_type === 'DETERIORATION') detailStr = 'Vitals worsened';
+            else if (log.event_type === 'TRIAGE') detailStr = 'Initial triage performed';
+            else if (log.event_type === 'RETRIAGE') detailStr = `Re-triaged (${log.details.trigger})`;
+            else if (log.event_type === 'OVERRIDE') detailStr = `Clinician override: ${log.details.reason}`;
+            else if (log.event_type === 'DISAGREEMENT') detailStr = 'Disagreement resolved';
+            else if (log.event_type === 'DISCHARGE') detailStr = 'Discharged from queue';
+            else detailStr = JSON.stringify(log.details);
+            return `<li style="margin-bottom: 5px;"><strong>${timeStr}</strong> <span style="color:#666;">[${log.event_type}]</span> - ${detailStr}</li>`;
+        }).join('') + '</ul>';
+
+    const arrivalTime = new Date(item.added_at * 1000).toLocaleTimeString();
+    const completedTime = new Date(item.completed_at * 1000).toLocaleTimeString();
+    const waitTimeMins = Math.round((item.completed_at - item.added_at) / 60);
+
+    const initV = item.initial_vitals || {};
+    const currV = p.vitals;
+
+    let vitalChangesHtml = '';
+    let latestVitalsHtml = '';
+    let hasChanges = false;
+    
+    const metrics = [
+        { label: 'HR', init: initV.heart_rate, curr: currV.heart_rate, unit: '' },
+        { label: 'SpO2', init: initV.spo2, curr: currV.spo2, unit: '%' },
+        { label: 'Temp', init: initV.temperature, curr: currV.temperature, unit: '°C' },
+        { label: 'RR', init: initV.respiratory_rate, curr: currV.respiratory_rate, unit: '' },
+        { label: 'GCS', init: initV.gcs, curr: currV.gcs, unit: '' },
+        { label: 'Pain', init: initV.pain_scale, curr: currV.pain_scale, unit: '' }
+    ];
+    
+    metrics.forEach(m => {
+        if (m.init !== m.curr && m.curr !== undefined && m.curr !== null) {
+            hasChanges = true;
+            vitalChangesHtml += `<p style="margin:2px 0;"><strong>${m.label}:</strong> ${m.init||'-'}${m.unit} &rarr; ${m.curr}${m.unit}</p>`;
+        }
+    });
+
+    if (hasChanges) {
+        latestVitalsHtml = `
+            <h3 style="border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 15px;">LATEST VITALS</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px; font-size: 14px;">
+                <p style="margin:0;"><strong>HR:</strong> ${currV.heart_rate || '-'}</p>
+                <p style="margin:0;"><strong>BP:</strong> ${currV.blood_pressure || (currV.systolic_bp ? currV.systolic_bp + '/' + (currV.diastolic_bp||'') : '-')}</p>
+                <p style="margin:0;"><strong>RR:</strong> ${currV.respiratory_rate || '-'}</p>
+                <p style="margin:0;"><strong>Temp:</strong> ${currV.temperature || '-'}°C</p>
+                <p style="margin:0;"><strong>SpO2:</strong> ${currV.spo2 || '-'}%</p>
+                <p style="margin:0;"><strong>GCS:</strong> ${currV.gcs || '-'}</p>
+                <p style="margin:0;"><strong>Pain:</strong> ${currV.pain_scale || '-'}</p>
+            </div>
+            <h3 style="border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 15px;">VITAL CHANGES</h3>
+            ${vitalChangesHtml}
+        `;
+    }
+
+    const modalBody = document.getElementById('review-modal-body');
+    if (modalBody) {
+        modalBody.innerHTML = `
+            <h2 style="margin-top: 0;">PATIENT TRIAGE RECORD</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div>
+                    <h3 style="border-bottom: 1px solid #ccc; padding-bottom: 5px;">PATIENT INFORMATION</h3>
+                    <p style="margin: 2px 0;"><strong>Name:</strong> ${p.name}</p>
+                    <p style="margin: 2px 0;"><strong>ID:</strong> ${p.id}</p>
+                    <p style="margin: 2px 0;"><strong>Age:</strong> ${p.age}</p>
+                    <p style="margin: 2px 0;"><strong>Gender:</strong> ${p.gender}</p>
+                    <p style="margin: 2px 0;"><strong>Arrival Mode:</strong> ${p.arrival_mode || 'Walk-in'}</p>
+                </div>
+                <div>
+                    <h3 style="border-bottom: 1px solid #ccc; padding-bottom: 5px;">WAITING INFORMATION</h3>
+                    <p style="margin: 2px 0;"><strong>Arrival Time:</strong> ${arrivalTime}</p>
+                    <p style="margin: 2px 0;"><strong>Initial Triage Time:</strong> ${arrivalTime}</p>
+                    <p style="margin: 2px 0;"><strong>Completion Time:</strong> ${completedTime}</p>
+                    <p style="margin: 2px 0;"><strong>Total Waiting Time:</strong> ${waitTimeMins} mins</p>
+                </div>
+            </div>
+
+            <h3 style="border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 15px;">CHIEF COMPLAINT</h3>
+            <p style="margin: 2px 0;">${p.chief_complaint}</p>
+
+            <h3 style="border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 15px;">MEDICAL HISTORY</h3>
+            <p style="margin: 2px 0;">${p.medical_history.length ? p.medical_history.join(', ') : 'None reported'}</p>
+
+            <h3 style="border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 15px;">OBSERVED SIGNS</h3>
+            <p style="margin: 2px 0;">${p.observed_signs.length ? p.observed_signs.join(', ') : 'None'}</p>
+
+            <h3 style="border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 15px;">INITIAL VITALS</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px; font-size: 14px;">
+                <p style="margin:0;"><strong>HR:</strong> ${initV.heart_rate || '-'}</p>
+                <p style="margin:0;"><strong>BP:</strong> ${initV.blood_pressure || (initV.systolic_bp ? initV.systolic_bp + '/' + (initV.diastolic_bp||'') : '-')}</p>
+                <p style="margin:0;"><strong>RR:</strong> ${initV.respiratory_rate || '-'}</p>
+                <p style="margin:0;"><strong>Temp:</strong> ${initV.temperature || '-'}°C</p>
+                <p style="margin:0;"><strong>SpO2:</strong> ${initV.spo2 || '-'}%</p>
+                <p style="margin:0;"><strong>GCS:</strong> ${initV.gcs || '-'}</p>
+                <p style="margin:0;"><strong>Pain:</strong> ${initV.pain_scale || '-'}</p>
+            </div>
+
+            ${latestVitalsHtml}
+
+            <h3 style="border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 15px;">TRIAGE ASSESSMENT</h3>
+            <p style="margin: 2px 0;"><strong>Final Priority:</strong> ${tr.priority}</p>
+            <p style="margin: 2px 0;"><strong>Decision Source:</strong> ${tr.source}</p>
+            <p style="margin: 2px 0;"><strong>Rules Assessment:</strong> ${tr.rules_priority} (${Math.round(tr.confidence*100)}%)</p>
+            <p style="margin: 2px 0;"><strong>ML Recommendation:</strong> ${tr.ml_priority || 'N/A'} (${tr.ml_confidence ? Math.round(tr.ml_confidence*100)+'%' : 'N/A'})</p>
+            
+            <h3 style="border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 15px;">TRIAGE FACTORS</h3>
+            <ul style="margin: 2px 0; padding-left: 20px;">${tr.reasons.map(r => `<li>${r}</li>`).join('')}</ul>
+
+            <h3 style="border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 15px;">AUDIT HISTORY</h3>
+            ${auditHtml}
+        `;
+        document.getElementById('review-modal').style.display = 'block';
+    }
+};
+
+window.downloadHandoff = async function(patientId) {
+    const item = allCompletedPatients.find(x => x.patient.id === patientId);
+    if (!item) return;
+    
+    const p = item.patient;
+    const tr = item.triage_result;
+    
+    const arrivalTime = new Date(item.added_at * 1000).toLocaleTimeString();
+    const completedTime = new Date(item.completed_at * 1000).toLocaleTimeString();
+    const waitTimeMins = Math.round((item.completed_at - item.added_at) / 60);
+    
+    let auditLogs = [];
+    try {
+        const res = await fetch(`${API_BASE}/audit`);
+        const logs = await res.json();
+        auditLogs = logs.filter(l => l.patient_id === patientId);
+    } catch(e) {}
+    
+    let auditHtml = auditLogs.length === 0 ? '<p>No events recorded.</p>' : 
+        '<ul>' + auditLogs.map(log => {
+            const timeStr = new Date(log.timestamp * 1000).toLocaleTimeString();
+            let detailStr = '';
+            if (log.event_type === 'DETERIORATION') detailStr = 'Vitals worsened';
+            else if (log.event_type === 'TRIAGE') detailStr = 'Initial triage performed';
+            else if (log.event_type === 'RETRIAGE') detailStr = `Re-triaged (${log.details.trigger})`;
+            else if (log.event_type === 'OVERRIDE') detailStr = `Clinician override: ${log.details.reason}`;
+            else if (log.event_type === 'DISAGREEMENT') detailStr = 'Disagreement resolved';
+            else if (log.event_type === 'DISCHARGE') detailStr = 'Discharged from queue';
+            else detailStr = JSON.stringify(log.details);
+            return `<li><strong>${timeStr}</strong> [${log.event_type}] - ${detailStr}</li>`;
+        }).join('') + '</ul>';
+
+    const initV = item.initial_vitals || {};
+    const currV = p.vitals;
+    
+    let vitalChangesHtml = '';
+    let latestVitalsHtml = '';
+    let hasChanges = false;
+    
+    const metrics = [
+        { label: 'HR', init: initV.heart_rate, curr: currV.heart_rate, unit: '' },
+        { label: 'SpO2', init: initV.spo2, curr: currV.spo2, unit: '%' },
+        { label: 'Temp', init: initV.temperature, curr: currV.temperature, unit: '°C' },
+        { label: 'RR', init: initV.respiratory_rate, curr: currV.respiratory_rate, unit: '' },
+        { label: 'GCS', init: initV.gcs, curr: currV.gcs, unit: '' },
+        { label: 'Pain', init: initV.pain_scale, curr: currV.pain_scale, unit: '' }
+    ];
+    
+    metrics.forEach(m => {
+        if (m.init !== m.curr && m.curr !== undefined && m.curr !== null) {
+            hasChanges = true;
+            vitalChangesHtml += `<p><strong>${m.label}:</strong> ${m.init||'-'}${m.unit} &rarr; ${m.curr}${m.unit}</p>`;
+        }
+    });
+    
+    if (hasChanges) {
+        latestVitalsHtml = `
+            <h2>LATEST / CURRENT VITALS</h2>
+            <p>HR: ${currV.heart_rate || '-'}</p>
+            <p>BP: ${currV.blood_pressure || (currV.systolic_bp ? currV.systolic_bp + '/' + (currV.diastolic_bp||'') : '-')}</p>
+            <p>RR: ${currV.respiratory_rate || '-'}</p>
+            <p>Temperature: ${currV.temperature || '-'}°C</p>
+            <p>SpO2: ${currV.spo2 || '-'}%</p>
+            <p>GCS: ${currV.gcs || '-'}</p>
+            <p>Pain: ${currV.pain_scale || '-'}</p>
+        `;
+        vitalChangesHtml = `<h2>VITAL CHANGES</h2>` + vitalChangesHtml;
+    }
+
+    const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PatientTriage_Handoff_${p.name.replace(/\s+/g, '_')}_${p.id}</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; }
+        h1 { font-size: 24px; margin-bottom: 5px; }
+        h2 { font-size: 18px; color: #555; border-bottom: 1px solid #000; padding-bottom: 5px; margin-top: 30px; }
+        p { margin: 5px 0; }
+        ul { margin: 5px 0; padding-left: 20px; }
+        .footer { margin-top: 50px; font-size: 12px; color: #777; border-top: 1px solid #ccc; padding-top: 10px; text-align: center; }
+        @media print {
+            body { font-size: 12pt; }
+            button { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <button onclick="window.print()" style="padding: 10px 20px; font-size: 16px; margin-bottom: 20px; cursor: pointer;">🖨️ Print / Save as PDF</button>
+
+    <h1>PATIENTTRIAGE.AI</h1>
+    <p><strong>TRIAGE / HANDOFF SUMMARY</strong></p>
+    
+    <h2>PATIENT INFORMATION</h2>
+    <p><strong>Patient:</strong> ${p.name}</p>
+    <p><strong>Patient ID:</strong> ${p.id}</p>
+    <p><strong>Age:</strong> ${p.age}</p>
+    <p><strong>Gender:</strong> ${p.gender}</p>
+    <p><strong>Arrival Mode:</strong> ${p.arrival_mode || 'Walk-in'}</p>
+
+    <h2>CHIEF COMPLAINT</h2>
+    <p>${p.chief_complaint}</p>
+
+    <h2>FINAL TRIAGE</h2>
+    <p><strong>Final Priority:</strong> ${tr.priority}</p>
+    <p><strong>Rules Assessment:</strong> ${tr.rules_priority}</p>
+    <p><strong>ML Recommendation:</strong> ${tr.ml_priority || 'N/A'}</p>
+    <p><strong>Decision Source:</strong> ${tr.source}</p>
+
+    <h2>INITIAL VITALS</h2>
+    <p>HR: ${initV.heart_rate || '-'}</p>
+    <p>BP: ${initV.blood_pressure || (initV.systolic_bp ? initV.systolic_bp + '/' + (initV.diastolic_bp||'') : '-')}</p>
+    <p>RR: ${initV.respiratory_rate || '-'}</p>
+    <p>Temperature: ${initV.temperature || '-'}°C</p>
+    <p>SpO2: ${initV.spo2 || '-'}%</p>
+    <p>GCS: ${initV.gcs || '-'}</p>
+    <p>Pain: ${initV.pain_scale || '-'}</p>
+
+    ${latestVitalsHtml}
+    ${vitalChangesHtml}
+
+    <h2>TRIAGE FACTORS</h2>
+    <ul>${tr.reasons.map(r => `<li>${r}</li>`).join('')}</ul>
+
+    <h2>QUEUE HISTORY</h2>
+    <p><strong>Arrival:</strong> ${arrivalTime}</p>
+    <p><strong>Initial Triage:</strong> ${arrivalTime}</p>
+    <p><strong>Completed:</strong> ${completedTime}</p>
+    <p><strong>Total Wait:</strong> ${waitTimeMins} mins</p>
+
+    <h2>IMPORTANT EVENTS</h2>
+    ${auditHtml}
+
+    <div class="footer">
+        PatientTriage.ai<br>
+        AI-assisted triage / queue management<br>
+        For clinical review
+    </div>
+</body>
+</html>
+    `;
+
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `PatientTriage_Handoff_\${p.name.replace(/\\s+/g, '_')}_\${p.id}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+};
+
+document.addEventListener('click', () => { 
+    document.querySelectorAll('.dropdown-content').forEach(el => el.style.display = 'none'); 
+});

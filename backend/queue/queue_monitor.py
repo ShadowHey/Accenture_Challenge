@@ -12,18 +12,24 @@ class QueueItem(BaseModel):
     escalation_required: bool = False
     reassessment_count: int = 0        # how many times this patient has been re-assessed
     last_reassessed_at: Optional[float] = None
+    initial_vitals: Optional[dict] = None
+    completed_at: Optional[float] = None
+    archived: bool = False
 
 class QueueMonitor:
     def __init__(self):
         self.queue: Dict[str, QueueItem] = {}
+        self.completed_queue: Dict[str, QueueItem] = {}
         self.surge_mode: bool = False
         self.wait_thresholds: dict = get_normal_thresholds()
 
     def add_patient(self, patient: PatientInput, result: TriageResult):
+        initial_v = patient.vitals.model_dump() if hasattr(patient.vitals, 'model_dump') else patient.vitals.dict()
         self.queue[patient.id] = QueueItem(
             patient=patient,
             triage_result=result,
-            added_at=time.time()
+            added_at=time.time(),
+            initial_vitals=initial_v
         )
 
     def get_queue(self) -> List[QueueItem]:
@@ -33,6 +39,18 @@ class QueueMonitor:
             self.queue.values(),
             key=lambda x: (x.triage_result.priority, x.added_at)
         )
+
+    def get_completed_queue(self) -> List[QueueItem]:
+        # Return sorted by completion time (newest first), exclude archived
+        return sorted(
+            [item for item in self.completed_queue.values() if not item.archived],
+            key=lambda x: x.completed_at if x.completed_at else 0,
+            reverse=True
+        )
+
+    def archive_patient(self, patient_id: str):
+        if patient_id in self.completed_queue:
+            self.completed_queue[patient_id].archived = True
 
     def _check_reassessments(self):
         """Check all patients against severity-based wait thresholds."""
@@ -114,6 +132,9 @@ class QueueMonitor:
 
     def remove_patient(self, patient_id: str):
         if patient_id in self.queue:
+            item = self.queue[patient_id]
+            item.completed_at = time.time()
+            self.completed_queue[patient_id] = item
             del self.queue[patient_id]
 
     def get_stats(self) -> dict:
