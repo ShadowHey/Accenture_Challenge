@@ -45,5 +45,8 @@
 *   `README.md`: Project summary and run instructions.
 *   `docs/stage1/`: Contains original HLD, LLD, and summaries from Stage 1.
 *   `docs/stage2/`: Contains updated HLD, LLD, `ARCHITECTURE.md`, `DECISIONS.md`, and `ML_ModelTraining.md` for Stage 2.
+*   `docs/LLD.md`: Latest system architecture and ML design document.
+*   `docs_pushes/`: Folder containing detailed release and feature push documentation.
+*   `changes.md`: Chronological changelog for the project.
 *   `ProjectMap.md`: File map (this file).
 *   `Conversation.md`: Log of key accomplishments.
