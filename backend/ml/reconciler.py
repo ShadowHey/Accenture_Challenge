@@ -20,6 +20,10 @@ def reconcile(rules_priority: str, rules_confidence: float,
     if ml_priority is None:
         return rules_priority, 'RULES', None
 
+    if ml_confidence is not None and ml_confidence < 0.60:
+        # If the ML model is highly uncertain, flag for immediate human review.
+        return rules_priority, 'CLINICIAN_REVIEW_REQUIRED', f"ML confidence too low ({int(ml_confidence*100)}%), review required"
+
     rules_num = _level_to_num(rules_priority)
     ml_num = _level_to_num(ml_priority)
 

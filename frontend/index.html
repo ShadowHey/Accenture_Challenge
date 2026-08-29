@@ -61,6 +61,12 @@
 
     <main>
         <section id="queue-section">
+            <div class="hq-wrapper" id="hq-wrapper" style="display: none;">
+                <div class="hq-title-box">
+                    WAITING<br>QUEUE
+                </div>
+                <div class="horizontal-queue" id="horizontal-queue-container"></div>
+            </div>
             <h2>Waiting Queue</h2>
             <div id="queue-container"></div>
         </section>
@@ -88,87 +94,139 @@
         <div class="modal-content modal-large">
             <span class="close-btn" data-modal="add-patient-modal">&times;</span>
             <h2>Add New Patient</h2>
+            
+            <div class="modal-toggle" style="margin-bottom: 15px; display: flex; gap: 15px;">
+                <label><input type="radio" name="ap_mode" value="form" checked> Form View</label>
+                <label><input type="radio" name="ap_mode" value="json"> JSON View</label>
+            </div>
+
             <form id="add-patient-form">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Name *</label>
-                        <input type="text" id="ap-name" required>
+                <div id="ap-form-view">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Name *</label>
+                            <input type="text" id="ap-name" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Age *</label>
+                            <input type="number" id="ap-age" min="0" max="120" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Gender *</label>
+                            <select id="ap-gender" required>
+                                <option value="M">Male</option>
+                                <option value="F">Female</option>
+                                <option value="O">Other</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="form-group">
-                        <label>Age *</label>
-                        <input type="number" id="ap-age" min="0" max="120" required>
+                        <label>Chief Complaint *</label>
+                        <input type="text" id="ap-complaint" required placeholder="e.g. Chest pain, shortness of breath">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Heart Rate (bpm)</label>
+                            <input type="number" id="ap-hr" min="0" max="300">
+                        </div>
+                        <div class="form-group">
+                            <label>Blood Pressure</label>
+                            <input type="text" id="ap-bp" placeholder="e.g. 120/80">
+                        </div>
+                        <div class="form-group">
+                            <label>SpO2 (%)</label>
+                            <input type="number" id="ap-spo2" min="0" max="100">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Temperature (°C)</label>
+                            <input type="number" id="ap-temp" step="0.1" min="30" max="45">
+                        </div>
+                        <div class="form-group">
+                            <label>Resp. Rate</label>
+                            <input type="number" id="ap-rr" min="0" max="80">
+                        </div>
+                        <div class="form-group">
+                            <label>GCS (3-15)</label>
+                            <input type="number" id="ap-gcs" min="3" max="15">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Pain Scale (0-10)</label>
+                            <input type="number" id="ap-pain" min="0" max="10">
+                        </div>
+                        <div class="form-group">
+                            <label>Arrival Mode</label>
+                            <select id="ap-arrival">
+                                <option value="walk-in">Walk-in</option>
+                                <option value="ambulance">Ambulance</option>
+                                <option value="helicopter">Helicopter</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>History Available</label>
+                            <select id="ap-history">
+                                <option value="false">No</option>
+                                <option value="true">Yes</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="form-group">
-                        <label>Gender *</label>
-                        <select id="ap-gender" required>
-                            <option value="M">Male</option>
-                            <option value="F">Female</option>
-                            <option value="O">Other</option>
-                        </select>
+                        <label>Medical History (comma-separated)</label>
+                        <input type="text" id="ap-med-history" placeholder="e.g. Hypertension, Diabetes">
+                    </div>
+                    <div class="form-group">
+                        <label>Observed Signs (comma-separated)</label>
+                        <input type="text" id="ap-signs" placeholder="e.g. Pale, Sweating, Alert">
                     </div>
                 </div>
-                <div class="form-group">
-                    <label>Chief Complaint *</label>
-                    <input type="text" id="ap-complaint" required placeholder="e.g. Chest pain, shortness of breath">
+
+                <div id="ap-json-view" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h3 style="margin: 0;">JSON Patient Object</h3>
+                        <button type="button" id="btn-copy-sample" class="btn-secondary btn-sm">Copy Sample JSON</button>
+                    </div>
+                    <textarea id="ap-json-input" rows="25" style="width: 100%; font-family: monospace; padding: 10px; resize: vertical;" placeholder='[
+  {
+    "name": "Jane Doe",
+    "age": 45,
+    "gender": "F", // options: "M", "F", "O"
+    "chief_complaint": "Severe chest pain",
+    "heart_rate": 110,
+    "blood_pressure": "140/90",
+    "respiratory_rate": 22,
+    "temperature": 37.5,
+    "spo2": 96,
+    "gcs": 15,
+    "pain_scale": 8,
+    "history_available": true,
+    "medical_history": ["Hypertension"],
+    "observed_signs": ["Sweating", "Pale"],
+    "arrival_mode": "ambulance" // options: "walk-in", "ambulance", "helicopter"
+  },
+  {
+    "name": "John Smith",
+    "age": 30,
+    "gender": "M", // options: "M", "F", "O"
+    "chief_complaint": "Ankle injury",
+    "heart_rate": 80,
+    "blood_pressure": "120/80",
+    "respiratory_rate": 16,
+    "temperature": 36.8,
+    "spo2": 99,
+    "gcs": 15,
+    "pain_scale": 5,
+    "history_available": false,
+    "medical_history": [],
+    "observed_signs": ["Swelling"],
+    "arrival_mode": "walk-in" // options: "walk-in", "ambulance", "helicopter"
+  }
+]'></textarea>
                 </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Heart Rate (bpm)</label>
-                        <input type="number" id="ap-hr" min="0" max="300">
-                    </div>
-                    <div class="form-group">
-                        <label>Blood Pressure</label>
-                        <input type="text" id="ap-bp" placeholder="e.g. 120/80">
-                    </div>
-                    <div class="form-group">
-                        <label>SpO2 (%)</label>
-                        <input type="number" id="ap-spo2" min="0" max="100">
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Temperature (°C)</label>
-                        <input type="number" id="ap-temp" step="0.1" min="30" max="45">
-                    </div>
-                    <div class="form-group">
-                        <label>Resp. Rate</label>
-                        <input type="number" id="ap-rr" min="0" max="80">
-                    </div>
-                    <div class="form-group">
-                        <label>GCS (3-15)</label>
-                        <input type="number" id="ap-gcs" min="3" max="15">
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Pain Scale (0-10)</label>
-                        <input type="number" id="ap-pain" min="0" max="10">
-                    </div>
-                    <div class="form-group">
-                        <label>Arrival Mode</label>
-                        <select id="ap-arrival">
-                            <option value="walk-in">Walk-in</option>
-                            <option value="ambulance">Ambulance</option>
-                            <option value="helicopter">Helicopter</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>History Available</label>
-                        <select id="ap-history">
-                            <option value="false">No</option>
-                            <option value="true">Yes</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Medical History (comma-separated)</label>
-                    <input type="text" id="ap-med-history" placeholder="e.g. Hypertension, Diabetes">
-                </div>
-                <div class="form-group">
-                    <label>Observed Signs (comma-separated)</label>
-                    <input type="text" id="ap-signs" placeholder="e.g. Pale, Sweating, Alert">
-                </div>
-                <button type="submit" class="btn-primary" style="width:100%;margin-top:15px;">Submit Patient</button>
+
+                <button type="submit" id="ap-submit-btn" class="btn-primary" style="width:100%;margin-top:15px;">Submit Patient</button>
             </form>
         </div>
     </div>
@@ -213,6 +271,9 @@
             <button id="btn-submit-vitals" class="btn-primary">Update Vitals</button>
         </div>
     </div>
+
+    <!-- Shared Tooltip for Horizontal Queue -->
+    <div id="shared-hq-tooltip" class="shared-hq-tooltip"></div>
 
     <script src="app.js"></script>
 </body>
