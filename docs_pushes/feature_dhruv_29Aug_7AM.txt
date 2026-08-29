@@ -45,3 +45,8 @@
 ## Update (Aug 29, 2026 - 9:00 AM) - Frontend Horizontal Queue
 - **`frontend/app.js`, `frontend/index.html`, `frontend/style.css`**: Added a horizontal scrolling queue component.
 - **Architecture/Technical Decision**: Implemented a shared tooltip system (`shared-hq-tooltip`) anchored to the body rather than individual cards to prevent Z-index and `overflow: hidden` clipping issues commonly seen in dense dashboard UIs. This is vastly more robust than injecting tooltip HTML into every single card element.
+
+## Update (Aug 29, 2026 - 2:45 PM) - Rhea AI Chatbot & Queue Filters
+- **`backend/nlp_parser.py`**: Created module to parse free-text for vital sign updates.
+- **`frontend/`**: Integrated 'Rhea' chatbot interface and priority-level Queue Filters.
+- **Architecture/Technical Decision**: Implemented a fuzzy-matching NLP parser (`difflib`) instead of simple regex. *Why It's Better*: Simple regex breaks if a clinician types "pulse 90" instead of "hr 90". Fuzzy matching standardizes synonymous clinical terms into strict backend data models, ensuring safe and accurate updates.

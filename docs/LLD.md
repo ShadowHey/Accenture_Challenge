@@ -32,3 +32,10 @@
 
 ### Presentation Layer (Queue Dashboard)
 - Introduced a **Horizontal Queue** component to complement the vertical list view. It provides an at-a-glance ticker of waiting patients with interactive tooltips dynamically positioned via JavaScript to prevent UI clipping and improve spatial efficiency.
+
+### NLP Conversational Parsing (`backend/nlp_parser.py`)
+- **Inputs**: Natural language strings from the Rhea UI chatbot (e.g., "The patient's spo2 is 94 and hr 120").
+- **Processing**:
+  - Uses Regex to pull out numerical values.
+  - Strips stop words and fuzzy-matches (`difflib`) the remaining context words against a dictionary of known vital synonyms (e.g., "sats" -> "spo2").
+- **Outputs**: A mapped dictionary of structured vitals that can be immediately patched into the patient's record.

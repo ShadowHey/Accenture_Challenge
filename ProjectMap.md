@@ -3,6 +3,7 @@
 ## Backend
 
 *   `backend/main.py`: FastAPI server setup, API routes (Stage 2: full hybrid pipeline, simulation endpoints, queue management).
+*   `backend/nlp_parser.py`: NLP parser module that extracts structured vitals from conversational text using regex and difflib.
 *   `backend/models.py`: Pydantic data models (`PatientInput`, `Vitals`, `TriageResult`, etc.). Expanded for Stage 2.
 *   `backend/triage_engine/`
     *   `triage_rules.py`: Age-stratified deterministic logic for assigning priority levels.

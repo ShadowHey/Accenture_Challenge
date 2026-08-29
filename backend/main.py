@@ -37,6 +37,7 @@ class OverrideRequest(BaseModel):
 class VitalsUpdateRequest(BaseModel):
     patient_id: str
     heart_rate: Optional[int] = None
+    blood_pressure: Optional[str] = None
     spo2: Optional[int] = None
     temperature: Optional[float] = None
     respiratory_rate: Optional[int] = None
@@ -175,7 +176,8 @@ def update_vitals(req: VitalsUpdateRequest):
         new_spo2=req.spo2,
         new_temp=req.temperature,
         new_rr=req.respiratory_rate,
-        new_gcs=req.gcs
+        new_gcs=req.gcs,
+        new_bp=req.blood_pressure
     )
 
     # If worsening detected, perform full re-triage
@@ -313,6 +315,35 @@ def clear_state():
     audit_logger.logs.clear()
     queue_manager.deactivate_surge()
     return {"status": "cleared"}
+
+from backend.nlp_parser import extract_vitals_from_text
+
+class ChatVitalsRequest(BaseModel):
+    text: str
+
+@app.get("/api/chat/patients")
+def search_patients_for_chat(name: str):
+    """Search for patients in the active queue by name."""
+    name_lower = name.lower()
+    matches = []
+    for item in queue_manager.queue.values():
+        if name_lower in item.patient.name.lower() or name_lower in item.patient.id.lower():
+            matches.append({
+                "id": item.patient.id,
+                "name": item.patient.name,
+                "age": item.patient.age,
+                "gender": item.patient.gender
+            })
+    return {"matches": matches}
+
+@app.post("/api/chat/extract_vitals")
+def chat_extract_vitals(req: ChatVitalsRequest):
+    """Extract vitals JSON from natural language text using the rule-based parser."""
+    try:
+        extracted = extract_vitals_from_text(req.text)
+        return {"extracted": extracted}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Mount frontend
 app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")

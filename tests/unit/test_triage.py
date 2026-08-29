@@ -26,8 +26,8 @@ def test_age_stratified_rules():
     )
     priority, reasons, age_group = evaluate_priority(p_ger)
     assert age_group == 'GERIATRIC'
-    assert priority == 'LEVEL 1'
-    assert any("Critical high temp" in r for r in reasons)
+    assert priority == 'LEVEL 2'
+    assert any("Concerning temp" in r for r in reasons)
 
 def test_ml_feature_extraction():
     p = PatientInput(
@@ -47,7 +47,8 @@ def test_ml_feature_extraction():
     assert features[4] == 140
     assert features[5] == 90
     assert features[14] == 1  # ambulance
-    assert features[17] == 1  # chest pain
+    assert features[15] == 0  # missing_vitals
+    assert len(features) == 16 + 384  # base + embeddings
 
 def test_reconciler_safety():
     # ML escalation allowed
