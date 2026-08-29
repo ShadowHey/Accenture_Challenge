@@ -164,6 +164,19 @@ def get_queue():
     """Get all patients in the waiting queue, sorted by priority."""
     return queue_manager.get_queue()
 
+@app.get("/api/completed", response_model=List[QueueItem])
+def get_completed_queue():
+    """Get all completed/discharged patients, sorted by completion time."""
+    return queue_manager.get_completed_queue()
+
+@app.post("/api/completed/{patient_id}/archive")
+def archive_completed_patient(patient_id: str):
+    """Archive a completed patient (removes them from completed list)."""
+    if patient_id not in queue_manager.completed_queue:
+        raise HTTPException(status_code=404, detail="Patient not found in completed queue")
+    queue_manager.archive_patient(patient_id)
+    return {"status": "Patient archived", "patient_id": patient_id}
+
 @app.post("/api/queue/vitals")
 def update_vitals(req: VitalsUpdateRequest):
     """Update a patient's vitals (simulates deterioration or re-measurement)."""
