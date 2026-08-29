@@ -93,23 +93,41 @@
             <div id="queue-container"></div>
         </section>
 
-        <section id="audit-section">
-            <h2>Audit Log</h2>
-            <div class="audit-filter">
-                <select id="audit-filter-type">
-                    <option value="">All Events</option>
-                    <option value="TRIAGE">Triage</option>
-                    <option value="RETRIAGE">Re-triage</option>
-                    <option value="OVERRIDE">Override</option>
-                    <option value="DISAGREEMENT">Disagreement</option>
-                    <option value="DETERIORATION">Deterioration</option>
-                    <option value="SURGE">Surge</option>
-                    <option value="DISCHARGE">Discharge</option>
-                </select>
-            </div>
-            <div id="audit-container"></div>
-        </section>
+        <div id="right-column" style="display: flex; flex-direction: column; gap: 1.5rem; flex: 1; min-width: 300px;">
+            <section id="completed-section" style="display: flex; flex-direction: column; overflow: hidden; height: 450px;">
+                <h2>Completed Patients</h2>
+                <div class="search-bar" style="margin-bottom: 10px;">
+                    <input type="text" id="completed-search" placeholder="Search patients..." style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+                </div>
+                <div id="completed-container" style="flex: 1; overflow-y: auto; padding-right: 5px;"></div>
+            </section>
+
+            <section id="audit-section" style="display: flex; flex-direction: column; overflow: hidden; height: 450px;">
+                <h2>Audit Log</h2>
+                <div class="audit-filter">
+                    <select id="audit-filter-type">
+                        <option value="">All Events</option>
+                        <option value="TRIAGE">Triage</option>
+                        <option value="RETRIAGE">Re-triage</option>
+                        <option value="OVERRIDE">Override</option>
+                        <option value="DISAGREEMENT">Disagreement</option>
+                        <option value="DETERIORATION">Deterioration</option>
+                        <option value="SURGE">Surge</option>
+                        <option value="DISCHARGE">Discharge</option>
+                    </select>
+                </div>
+                <div id="audit-container" style="flex: 1; overflow-y: auto;"></div>
+            </section>
+        </div>
     </main>
+
+    <!-- Modal: Review Patient -->
+    <div id="review-modal" class="modal">
+        <div class="modal-content modal-large">
+            <span class="close-btn" data-modal="review-modal">&times;</span>
+            <div id="review-modal-body"></div>
+        </div>
+    </div>
 
     <!-- Modal: Add Patient -->
     <div id="add-patient-modal" class="modal">
