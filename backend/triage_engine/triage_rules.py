@@ -42,7 +42,7 @@ def evaluate_priority(patient: PatientInput) -> tuple:
 
     # Keyword categories for symptom-based assessment
     critical_keywords = ['unresponsive', 'unconscious', 'seizure', 'not breathing', 'cardiac arrest']
-    severe_keywords = ['chest pain', 'severe', 'stroke', 'hemorrhage']
+    severe_keywords = ['chest pain', 'severe', 'stroke', 'hemorrhage', 'weakness', 'droop', 'slurred', 'neurological', 'cva']
     moderate_keywords = ['pain', 'fracture', 'dizziness', 'vomiting']
     minor_keywords = ['sprain', 'minor', 'cut', 'rash', 'sore throat']
 
@@ -105,7 +105,10 @@ def evaluate_priority(patient: PatientInput) -> tuple:
 
     # Temperature check (age-adjusted — geriatric has lower threshold)
     if temp is not None:
-        if age_group == 'PEDIATRIC' and temp > 39.0:
+        if temp < 35.0:
+            reasons.append(f"Critical hypothermia: {temp}°C")
+            is_level_1 = True
+        elif age_group == 'PEDIATRIC' and temp > 39.0:
             reasons.append(f"Critical high temp for pediatric: {temp}°C")
             is_level_1 = True
         elif age_group == 'ADULT' and temp > 39.5:
@@ -117,7 +120,10 @@ def evaluate_priority(patient: PatientInput) -> tuple:
 
     # Respiratory rate check (age-adjusted with pediatric sub-ranges)
     if rr is not None:
-        if age_group == 'PEDIATRIC':
+        if rr < 10:
+            reasons.append(f"Critical bradypnea: {rr}")
+            is_level_1 = True
+        elif age_group == 'PEDIATRIC':
             if (age < 2 and rr > 50) or (2 <= age <= 12 and rr > 40) or \
                (13 <= age < 18 and rr > 30):
                 reasons.append(f"Critical high RR for pediatric ({age}y): {rr}")
@@ -149,27 +155,75 @@ def evaluate_priority(patient: PatientInput) -> tuple:
     is_level_2 = False
 
     if hr is not None:
-        if age_group == 'ADULT' and hr > 120:
-            reasons.append(f"Elevated HR for adult: {hr} bpm")
-            is_level_2 = True
-        elif age_group == 'GERIATRIC' and hr > 110:
-            reasons.append(f"Elevated HR for geriatric: {hr} bpm")
-            is_level_2 = True
+        if age_group == 'PEDIATRIC':
+            if (age < 2 and hr > 160) or (2 <= age <= 5 and hr > 140) or \
+               (6 <= age <= 12 and hr > 120) or (13 <= age <= 17 and hr > 110):
+                reasons.append(f"Elevated HR for pediatric ({age}y): {hr} bpm")
+                is_level_2 = True
+            elif (age >= 2 and hr < 80):
+                reasons.append(f"Low HR for pediatric ({age}y): {hr} bpm")
+                is_level_2 = True
+        elif age_group == 'ADULT':
+            if hr > 120:
+                reasons.append(f"Elevated HR for adult: {hr} bpm")
+                is_level_2 = True
+            elif hr < 60:
+                reasons.append(f"Low HR for adult: {hr} bpm")
+                is_level_2 = True
+        elif age_group == 'GERIATRIC':
+            if hr > 110:
+                reasons.append(f"Elevated HR for geriatric: {hr} bpm")
+                is_level_2 = True
+            elif hr < 60:
+                reasons.append(f"Low HR for geriatric: {hr} bpm")
+                is_level_2 = True
 
     if spo2 is not None:
-        if age_group == 'ADULT' and spo2 < 94:
-            reasons.append(f"Concerning SpO2 for adult: {spo2}%")
+        if age_group == 'GERIATRIC' and spo2 < 94:
+            reasons.append(f"Concerning SpO2 for geriatric: {spo2}%")
+            is_level_2 = True
+        elif spo2 < 95:
+            reasons.append(f"Concerning SpO2: {spo2}%")
             is_level_2 = True
 
     if temp is not None:
-        if age_group == 'ADULT' and temp > 38.5:
+        if temp < 36.0:
+            reasons.append(f"Concerning hypothermia: {temp}°C")
+            is_level_2 = True
+        elif age_group == 'PEDIATRIC' and temp > 38.5:
+            reasons.append(f"Concerning temp for pediatric: {temp}°C")
+            is_level_2 = True
+        elif age_group == 'ADULT' and temp > 38.5:
             reasons.append(f"Concerning temp for adult: {temp}°C")
+            is_level_2 = True
+        elif age_group == 'GERIATRIC' and temp > 38.0:
+            reasons.append(f"Concerning temp for geriatric: {temp}°C")
             is_level_2 = True
 
     if rr is not None:
-        if age_group == 'ADULT' and rr > 22:
+        if age_group == 'PEDIATRIC':
+            if (age < 2 and rr > 40) or (2 <= age <= 12 and rr > 30) or \
+               (13 <= age < 18 and rr > 24):
+                reasons.append(f"Concerning RR for pediatric ({age}y): {rr}")
+                is_level_2 = True
+        elif age_group == 'ADULT' and rr > 22:
             reasons.append(f"Concerning RR for adult: {rr}")
             is_level_2 = True
+        elif age_group == 'GERIATRIC' and rr > 22:
+            reasons.append(f"Concerning RR for geriatric: {rr}")
+            is_level_2 = True
+
+    if sys_bp is not None:
+        if sys_bp <= 100:
+            reasons.append(f"Borderline low systolic BP: {sys_bp} mmHg")
+            is_level_2 = True
+        elif sys_bp >= 160:
+            reasons.append(f"Severe hypertension: {sys_bp} mmHg")
+            is_level_2 = True
+
+    if gcs is not None and gcs < 15:
+        reasons.append(f"Altered mental status (GCS): {gcs}")
+        is_level_2 = True
 
     if pain is not None and pain >= 8:
         reasons.append(f"Severe pain: {pain}/10")
