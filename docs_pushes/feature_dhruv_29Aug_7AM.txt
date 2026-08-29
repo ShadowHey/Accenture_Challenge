@@ -1,0 +1,43 @@
+# Feature Push Summary: feature/dhruv (Aug 29, 2026 - 7:00 AM)
+
+## Code & File Structure Changes
+
+### Modified Files:
+- **`backend/ml/feature_extractor.py`**: Refactored to replace simple keyword boolean flags with dense NLP embeddings generated via `SentenceTransformer`. The feature vector now outputs 400 dimensions (16 numeric/boolean + 384 embedding dims).
+- **`backend/ml/models/triage_model.joblib`**: Updated serialized model trained on the new embedding-inclusive dataset.
+- **`backend/ml/reconciler.py`**: Added a confidence threshold check (60%). ML predictions falling below this threshold are overridden to `CLINICIAN_REVIEW_REQUIRED`.
+- **`backend/ml/training/generate_training_data.py`**: Vastly improved synthetic data generation. Expanded from basic randomization to 25 highly specific clinical archetypes, added outlier injection, and integrated SentenceTransformers to bake embeddings directly into the CSV.
+- **`backend/triage_engine/triage_rules.py`**: Refined clinical vital sign thresholds (HR, RR, Temp, SpO2, Sys BP) with strict age-stratification (Pediatric, Adult, Geriatric) ensuring appropriate triggering of Level 1 and Level 2 priority.
+- **`frontend/app.js`**: Re-wired the "Add Patient" form submission logic to handle both single form POSTs and bulk JSON array POST requests concurrently.
+- **`frontend/index.html`**: Added a toggle switch between standard "Form View" and "JSON View" in the Add Patient Modal, plus a sample JSON payload and copy button.
+
+### New Files/Folders Created:
+- **`changes.md`**: Created to track high-level changelogs over time.
+- **`docs/` & `docs/LLD.md`**: Created directory and Low-Level Design documentation for the ML pipeline and Triage Rules.
+- **`docs_pushes/`**: Created directory for comprehensive push/release summaries.
+- **`docs_pushes/feature_dhruv_29Aug_7AM.txt`**: This file.
+
+### Deleted Files/Folders:
+- None
+
+## Architecture Changes
+- **Hybrid ML/Rule Engine Safety Mechanism**: Added an explicit confidence check in the ML pipeline. The architecture now explicitly guards against ML hallucinations or uncertain edge-cases by forcing a clinician review loop.
+- **NLP Integration**: Moved away from brittle regex/keyword spotting in Python towards semantic sentence embeddings (`all-MiniLM-L6-v2`) for free-text processing of patient histories and chief complaints.
+
+## Technical Decisions & Justifications
+
+1. **Adopting `SentenceTransformer` over Keyword Flags**:
+   - *Previous State*: 5-6 hardcoded boolean flags checking for substrings like "chest pain", "breath", etc.
+   - *Why It's Better*: Keywords are brittle. "No chest pain" would trigger the `is_chest_pain` flag in the previous iteration. Dense embeddings capture semantic similarity, meaning "my heart hurts" and "chest pressure" are mapped close together in vector space, making the ML model infinitely more robust to varied input text.
+
+2. **Age-Stratified Deterministic Rules**:
+   - *Previous State*: Broad vitals thresholds that didn't adequately adjust for extremes in age.
+   - *Why It's Better*: A heart rate of 140 is normal for an infant but critical for an adult. Stratifying by pediatric (<18, with sub-categories), adult, and geriatric (>65) ensures the safety-net rule engine aligns with standard ED guidelines.
+
+3. **60% ML Confidence Threshold**:
+   - *Previous State*: ML prediction was always accepted if rules didn't escalate.
+   - *Why It's Better*: AI in healthcare requires stringent safety guardrails. If the model isn't at least 60% confident in its prediction, surfacing the patient for `CLINICIAN_REVIEW_REQUIRED` reduces the liability of automatic mis-triage.
+
+4. **Frontend JSON Bulk Upload**:
+   - *Previous State*: Adding patients required clicking through the form one by one.
+   - *Why It's Better*: Developers and testers can now easily simulate ED surges by pasting large JSON arrays of patient data, dramatically speeding up QA testing of queue mechanics and triage prioritization.
