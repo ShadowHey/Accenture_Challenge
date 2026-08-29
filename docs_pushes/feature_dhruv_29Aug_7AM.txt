@@ -41,3 +41,7 @@
 4. **Frontend JSON Bulk Upload**:
    - *Previous State*: Adding patients required clicking through the form one by one.
    - *Why It's Better*: Developers and testers can now easily simulate ED surges by pasting large JSON arrays of patient data, dramatically speeding up QA testing of queue mechanics and triage prioritization.
+
+## Update (Aug 29, 2026 - 9:00 AM) - Frontend Horizontal Queue
+- **`frontend/app.js`, `frontend/index.html`, `frontend/style.css`**: Added a horizontal scrolling queue component.
+- **Architecture/Technical Decision**: Implemented a shared tooltip system (`shared-hq-tooltip`) anchored to the body rather than individual cards to prevent Z-index and `overflow: hidden` clipping issues commonly seen in dense dashboard UIs. This is vastly more robust than injecting tooltip HTML into every single card element.

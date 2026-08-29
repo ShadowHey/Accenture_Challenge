@@ -19,3 +19,9 @@
 - **`frontend/app.js` & `frontend/index.html`**: Added a UI toggle in the "Add Patient" modal to support single form entry and JSON bulk upload.
   - **Why**: To allow users (and testers) to easily input multiple patients at once or copy-paste clinical scenarios in JSON format.
   - **Impact**: Improves UX and testing efficiency.
+
+### Code Changes (Update - 9:00 AM)
+- **`frontend/index.html`**, **`frontend/app.js`**, **`frontend/style.css`**: Added a horizontal scrolling queue component (`#horizontal-queue-container`) with shared tooltips to visually represent waiting patients above the standard list view.
+  - **Why**: To provide a space-efficient, at-a-glance view of the waiting room triage queue for clinicians and administrators.
+  - **Impact**: Enhances dashboard usability and situational awareness in high-volume surge scenarios.
+  - **Tests**: Manually tested frontend rendering and tooltip positioning.

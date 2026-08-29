@@ -29,3 +29,6 @@
 ## Frontend
 - **Patient Addition (`frontend/app.js`, `frontend/index.html`)**: Allows UI toggling between a standard Web Form and a JSON text editor.
 - The JSON view iterates over an array of parsed objects, validating required fields (`name`, `age`, `gender`, `chief_complaint`) before triggering multiple concurrent `POST /patient` API requests.
+
+### Presentation Layer (Queue Dashboard)
+- Introduced a **Horizontal Queue** component to complement the vertical list view. It provides an at-a-glance ticker of waiting patients with interactive tooltips dynamically positioned via JavaScript to prevent UI clipping and improve spatial efficiency.
