@@ -16,11 +16,15 @@ class AuditLogger:
 
     def log_event(self, event_type: str, patient_id: str, details: dict, clinician_id: str = "SYSTEM"):
         """Log any audit event."""
+        # Apply PII masking to details dict if it contains sensitive keys
+        from backend.security.pii_masker import mask_patient_dict
+        masked_details = mask_patient_dict(details)
+        
         event = AuditEvent(
             event_type=event_type,
             patient_id=patient_id,
             timestamp=time.time(),
-            details=details,
+            details=masked_details,
             clinician_id=clinician_id
         )
         self.logs.append(event)

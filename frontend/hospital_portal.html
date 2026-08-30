@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hospital Admin Portal - PatientTriage.ai</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f4f7f6; margin: 0; padding: 0; }
+        .navbar { background: #003366; color: white; padding: 1rem; display: flex; justify-content: space-between; align-items: center; }
+        .container { max-width: 800px; margin: 2rem auto; padding: 1rem; }
+        .card { background: white; border-radius: 8px; padding: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 2rem; }
+        .hidden { display: none !important; }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: bold; }
+        .form-group input { width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .btn { background: #0066cc; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; }
+        .btn:hover { background: #0052a3; }
+        .btn-outline { background: transparent; border: 1px solid #0066cc; color: #0066cc; }
+        .btn-outline:hover { background: #0066cc; color: white; }
+        .tabs { display: flex; margin-bottom: 1rem; border-bottom: 1px solid #ccc; }
+        .tab { padding: 0.5rem 1rem; cursor: pointer; }
+        .tab.active { border-bottom: 2px solid #0066cc; font-weight: bold; }
+        textarea { width: 100%; height: 200px; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; font-family: monospace; }
+        #message-banner { padding: 1rem; margin-bottom: 1rem; border-radius: 4px; }
+        .msg-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .msg-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    </style>
+</head>
+<body>
+
+<div class="navbar">
+    <h2>Hospital Admin Portal</h2>
+    <div id="nav-user" class="hidden">
+        <span id="hospital-name-display"></span>
+        <button class="btn btn-outline" style="border-color: white; color: white; margin-left: 1rem;" onclick="logout()">Logout</button>
+    </div>
+</div>
+
+<div class="container">
+    <div id="message-banner" class="hidden"></div>
+
+    <!-- Auth Section -->
+    <div id="auth-section" class="card">
+        <div class="tabs">
+            <div class="tab active" id="tab-login" onclick="switchAuthTab('login')">Login</div>
+            <div class="tab" id="tab-register" onclick="switchAuthTab('register')">Register</div>
+        </div>
+
+        <form id="login-form">
+            <h3>Login to Hospital Portal</h3>
+            <div class="form-group">
+                <label>Hospital Code</label>
+                <input type="text" id="login-code" required placeholder="e.g. H001">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="login-password" required>
+            </div>
+            <button type="submit" class="btn">Login</button>
+        </form>
+
+        <form id="register-form" class="hidden">
+            <h3>Register New Hospital</h3>
+            <div class="form-group">
+                <label>Hospital Name</label>
+                <input type="text" id="reg-name" required placeholder="e.g. City General Hospital">
+            </div>
+            <div class="form-group">
+                <label>Hospital Code</label>
+                <input type="text" id="reg-code" required placeholder="e.g. CITY01">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="reg-password" required>
+            </div>
+            <button type="submit" class="btn">Register</button>
+        </form>
+    </div>
+
+    <!-- Dashboard Section -->
+    <div id="dashboard-section" class="hidden">
+        <div class="card">
+            <h3>Submit Historical Patient Data (FHIR)</h3>
+            <p>Upload standard FHIR Bundles to enrich the patient medical history database for future triaging. The machine learning model will automatically incorporate these historical conditions.</p>
+            
+            <form id="fhir-form">
+                <div class="form-group">
+                    <label>FHIR Bundle JSON</label>
+                    <textarea id="fhir-payload" required placeholder='{ "resourceType": "Bundle", "type": "collection", "entry": [...] }'></textarea>
+                </div>
+                <button type="submit" class="btn">Submit FHIR Data</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="hospital_portal.js"></script>
+</body>
+</html>

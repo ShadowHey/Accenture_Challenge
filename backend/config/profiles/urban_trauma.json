@@ -1,0 +1,14 @@
+{
+    "id": "urban_trauma",
+    "name": "Urban Trauma Center (Tier 1)",
+    "description": "High-volume, highly-staffed trauma center. Extremely strict SLAs, high capacity before surge.",
+    "wait_thresholds_seconds": {
+        "LEVEL 1": 0,
+        "LEVEL 2": 300,
+        "LEVEL 3": 900,
+        "LEVEL 4": 1800,
+        "LEVEL 5": 3600
+    },
+    "surge_capacity_trigger": 50,
+    "surge_multiplier": 0.75
+}

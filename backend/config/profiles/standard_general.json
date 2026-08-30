@@ -1,0 +1,14 @@
+{
+    "id": "standard_general",
+    "name": "Standard General Hospital",
+    "description": "Baseline operational thresholds for a standard regional hospital.",
+    "wait_thresholds_seconds": {
+        "LEVEL 1": 0,
+        "LEVEL 2": 600,
+        "LEVEL 3": 1800,
+        "LEVEL 4": 3600,
+        "LEVEL 5": 7200
+    },
+    "surge_capacity_trigger": 20,
+    "surge_multiplier": 0.5
+}

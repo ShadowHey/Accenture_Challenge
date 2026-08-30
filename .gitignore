@@ -15,3 +15,5 @@ __pycache__/
 
 # Synthetic training data
 backend/ml/training/training_data.csv
+.env
+backend.log
