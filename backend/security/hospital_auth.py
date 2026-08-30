@@ -6,22 +6,22 @@ from fastapi import HTTPException, Header, Depends
 
 STAFF_CREDENTIALS = {
     "clinician@H001.hosp": {
-        "password_hash": "$2b$12$32JF0AEOIkeSBys2u8WvrOmXIVJN/q1so6irNGR8supjFmQUHL.0K",
+        "password_hash": "$2b$12$X3wKErB4cxjpQQQllDTuF.2RZCcxgMoDJcaUz1hZKYsNIyX4IiqXG",
         "role": "CLINICIAN",
         "hospital_code": "H001"
     },
     "receptionist@H001.hosp": {
-        "password_hash": "$2b$12$b5dyunL9ZJJQSLqFmq0XqeduV55bC9ajlgToGdJ94mmTplku1XLO6",
+        "password_hash": "$2b$12$8/i/gjxkZEOCS1k8hm.FOep8Cm7RPk2.5kKdTLyW8YYpDXP7QSK3K",
         "role": "RECEPTIONIST",
         "hospital_code": "H001"
     },
     "clinician@H002.hosp": {
-        "password_hash": "$2b$12$Xfeex7VvmShb9WdgbrP7t.tr8XSSQpUpVF3FrowFwhXj4npj516ti",
+        "password_hash": "$2b$12$mpoatDpasLVfkn53xHpXFuGyH6T3806Jt2Q6EGogZ8fo/iMeZgKN.",
         "role": "CLINICIAN",
         "hospital_code": "H002"
     },
     "receptionist@H002.hosp": {
-        "password_hash": "$2b$12$qKFBvETfn920dj2v2SgTL.t8CqBvfkfOcVN0glRYF9WMOEzI7kdOO",
+        "password_hash": "$2b$12$ho1k2XQz0I6JN93/.cOBfO8U.z/vY3aSBnJJQwZovq3QyczNxSBPK",
         "role": "RECEPTIONIST",
         "hospital_code": "H002"
     }
