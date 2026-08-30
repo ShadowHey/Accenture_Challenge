@@ -40,3 +40,33 @@ class TriageResult(BaseModel):
     source: str = "RULES"                  # RULES / ML_ESCALATED / HYBRID_AGREE / RULES_FLOOR
     disagreement: Optional[str] = None     # explanation if rules and ML disagree
     feature_importances: Optional[dict] = None  # top ML feature importances
+
+class PatientUpdatePayload(BaseModel):
+    name: Optional[str] = None
+    age: Optional[int] = None
+    gender: Optional[str] = None
+    chief_complaint: Optional[str] = None
+    arrival_mode: Optional[str] = None
+    history_available: Optional[bool] = None
+    medical_history: Optional[List[str]] = None
+    observed_signs: Optional[List[str]] = None
+    heart_rate: Optional[int] = None
+    blood_pressure: Optional[str] = None
+    spo2: Optional[int] = None
+    temperature: Optional[float] = None
+    respiratory_rate: Optional[int] = None
+    gcs: Optional[int] = None
+    pain_scale: Optional[int] = None
+
+class HistoricalRecord(BaseModel):
+    patient_id: Optional[str] = None
+    name: Optional[str] = None
+    age: Optional[int] = None
+    gender: Optional[str] = None
+    chief_complaint: Optional[str] = None
+    vitals: Optional[dict] = None
+    medical_history: Optional[List[str]] = None
+    observed_signs: Optional[List[str]] = None
+    arrival_mode: Optional[str] = None
+    visit_date: Optional[str] = None
+    discharge_status: Optional[str] = None

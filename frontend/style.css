@@ -746,3 +746,86 @@ details summary { cursor: pointer; font-weight: 600; font-size: 0.85rem; color: 
     background-color: #007bff;
     color: #fff;
 }
+
+/* ─── Sortable Queue Container ─────────────────────────────────────────────── */
+.sortable-queue-container {
+    max-height: 200px;
+    overflow-y: auto;
+    margin: 10px 0;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 5px;
+    background: #fdfdfd;
+}
+
+.queue-sort-item {
+    padding: 8px 12px;
+    margin: 4px 0;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    color: var(--text-color);
+}
+
+.queue-sort-item.draggable {
+    cursor: grab;
+    border: 2px solid var(--primary-color);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    font-weight: bold;
+}
+
+.queue-sort-item.draggable:active {
+    cursor: grabbing;
+}
+
+.queue-sort-item .drag-handle {
+    margin-right: 10px;
+    color: #888;
+    font-size: 1.1rem;
+    cursor: grab;
+}
+
+.queue-sort-item.dragging {
+    opacity: 0.5;
+}
+
+.queue-sort-item.drag-over {
+    border-top: 2px solid var(--primary-color);
+}
+
+/* ─── Hospital & User Badges ─────────────────────────────────────────────────── */
+.hospital-badge {
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-right: 10px;
+    white-space: nowrap;
+}
+
+.user-badge {
+    color: rgba(255,255,255,0.8);
+    font-size: 13px;
+    margin-right: 10px;
+    white-space: nowrap;
+}
+
+#btn-logout {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: background 0.2s;
+}
+
+#btn-logout:hover {
+    background: rgba(255,255,255,0.25);
+}
