@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
@@ -8,7 +8,11 @@ import os
 import time
 import uuid
 
-from backend.models import PatientInput, TriageResult, Vitals
+from backend.models import PatientInput, TriageResult, Vitals, PatientUpdatePayload
+from backend.security.rbac import get_current_role, require_clinician_role, get_hospital_code
+from backend.security.pii_masker import mask_name
+from backend.config.profile_manager import profile_manager
+
 from backend.triage_engine.triage_explanation import perform_triage
 from backend.queue.queue_monitor import queue_manager, QueueItem
 from backend.audit.audit_logger import audit_logger, AuditEvent
@@ -17,8 +21,49 @@ from backend.ml.reconciler import reconcile
 from backend.simulation.patient_generator import generate_patient
 from backend.simulation.surge_simulator import create_surge_patients
 from backend.simulation.deterioration_simulator import simulate_deterioration
+from backend.routers import fhir, ingestion, auth_router
+from contextlib import asynccontextmanager
+from dotenv import load_dotenv
+from supabase import create_client
 
-app = FastAPI(title="PatientTriage.ai API — Stage 2")
+load_dotenv()
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+supabase_client = None
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global supabase_client
+    if SUPABASE_URL and SUPABASE_KEY:
+        try:
+            supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
+            # Close existing active sessions
+            supabase_client.table("sessions").update({"status": "closed", "closed_at": "now()"}).eq("status", "active").execute()
+            # Start new session
+            res = supabase_client.table("sessions").insert({"status": "active"}).execute()
+            session_id = res.data[0]['id']
+            queue_manager.set_session(session_id)
+            audit_logger.logs.clear()
+            print(f"🚀 Started new DB session: {session_id}")
+        except Exception as e:
+            print(f"Supabase connection failed: {e}")
+    else:
+        print("Warning: Supabase credentials missing.")
+        
+    yield
+    
+    if supabase_client and getattr(queue_manager, 'active_session_id', None):
+        try:
+            supabase_client.table("sessions").update({"status": "closed", "closed_at": "now()"}).eq("id", queue_manager.active_session_id).execute()
+            print(f"🛑 Closed DB session: {queue_manager.active_session_id}")
+        except Exception as e:
+            pass
+
+app = FastAPI(title="PatientTriage.ai API — Stage 2", lifespan=lifespan)
+
+app.include_router(fhir.router)
+app.include_router(auth_router.router)
+app.include_router(ingestion.router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -33,6 +78,8 @@ class OverrideRequest(BaseModel):
     patient_id: str
     new_priority: str
     reason: str
+    place_before_patient_id: Optional[str] = None
+    place_after_patient_id: Optional[str] = None
 
 class VitalsUpdateRequest(BaseModel):
     patient_id: str
@@ -64,59 +111,36 @@ class PatientFormRequest(BaseModel):
 
 # ─── Helper: full triage pipeline (rules + ML + reconcile) ─────────────────────
 
-def full_triage_pipeline(patient: PatientInput) -> TriageResult:
-    """
-    Run the complete hybrid triage pipeline:
-    1. Deterministic rules engine → rules_priority
-    2. ML model → ml_priority (advisory)
-    3. Reconciler → final priority (ML can escalate, never downgrade)
-    4. Log everything to audit trail
-    """
-    # Step 1: Rules-based triage
-    result = perform_triage(patient)
-
-    # Step 2: ML prediction
-    ml_priority, ml_confidence, feature_importances = predict_triage(patient)
-
-    # Step 3: Reconcile rules + ML
-    final_priority, source, disagreement = reconcile(
-        result.priority, result.confidence, ml_priority, ml_confidence
-    )
-
-    # Update result with ML and reconciliation data
-    result.ml_priority = ml_priority
-    result.ml_confidence = ml_confidence
-    result.feature_importances = feature_importances
-    result.source = source
-    result.disagreement = disagreement
-    result.priority = final_priority
-
-    # Step 4: Audit logging
-    audit_logger.log_triage(
-        patient.id, final_priority, result.confidence,
-        source, result.rules_priority, ml_priority
-    )
-
-    # Log disagreement separately if it occurred
-    if disagreement and source in ("ML_ESCALATED", "RULES_FLOOR"):
-        audit_logger.log_disagreement(
-            patient.id, result.rules_priority,
-            ml_priority, final_priority, source
-        )
-
-    return result
+from backend.services.triage_service import full_triage_pipeline
 
 # ─── API Endpoints ─────────────────────────────────────────────────────────────
 
+@app.get("/api/config/profiles")
+def get_profiles():
+    """Returns all available hospital configuration profiles."""
+    return {
+        "active_id": profile_manager.active_profile_id,
+        "profiles": profile_manager.get_all_profiles()
+    }
+
+@app.post("/api/config/profile/{profile_id}")
+def set_profile(profile_id: str):
+    """Sets the active hospital configuration profile."""
+    if profile_manager.set_active_profile(profile_id):
+        # Force a queue re-evaluation using the new profile's SLAs
+        queue_manager._check_reassessments()
+        return {"status": "success", "active_profile": profile_manager.get_active_profile()}
+    raise HTTPException(status_code=404, detail="Profile not found")
+
 @app.post("/api/triage", response_model=TriageResult)
-def submit_patient(patient: PatientInput):
+def submit_patient(patient: PatientInput, hospital_code: str = Depends(get_hospital_code)):
     """Submit a patient for triage (raw JSON)."""
     result = full_triage_pipeline(patient)
-    queue_manager.add_patient(patient, result)
+    queue_manager.add_patient(patient, result, hospital_code=hospital_code)
     return result
 
 @app.post("/api/patient", response_model=TriageResult)
-def add_patient_from_form(form: PatientFormRequest):
+def add_patient_from_form(form: PatientFormRequest, hospital_code: str = Depends(get_hospital_code)):
     """Add a new patient from the UI form. Auto-generates ID."""
     patient_id = f"PT_{uuid.uuid4().hex[:6].upper()}"
 
@@ -156,31 +180,71 @@ def add_patient_from_form(form: PatientFormRequest):
     )
 
     result = full_triage_pipeline(patient)
-    queue_manager.add_patient(patient, result)
+    queue_manager.add_patient(patient, result, hospital_code=hospital_code)
     return result
 
 @app.get("/api/queue", response_model=List[QueueItem])
-def get_queue():
-    """Get all patients in the waiting queue, sorted by priority."""
-    return queue_manager.get_queue()
+def get_queue(role: str = Depends(get_current_role), hospital_code: str = Depends(get_hospital_code)):
+    """Get all patients in the waiting queue, sorted by priority. Scrubs clinical data for RECEPTIONIST."""
+    items = queue_manager.get_queue(hospital_code=hospital_code)
+    if role == "RECEPTIONIST":
+        scrubbed = []
+        for item in items:
+            m_item = item.model_copy(deep=True) if hasattr(item, 'model_copy') else item.copy(deep=True)
+            m_item.patient.vitals = Vitals() # empty vitals
+            m_item.triage_result.reasons = []
+            m_item.triage_result.feature_importances = None
+            m_item.triage_result.ml_confidence = None
+            m_item.triage_result.rules_priority = ""
+            m_item.initial_vitals = None
+            scrubbed.append(m_item)
+        return scrubbed
+    elif role != "CLINICIAN":
+        masked_items = []
+        for item in items:
+            m_item = item.model_copy(deep=True) if hasattr(item, 'model_copy') else item.copy(deep=True)
+            m_item.patient.name = mask_name(m_item.patient.name)
+            masked_items.append(m_item)
+        return masked_items
+    return items
 
 @app.get("/api/completed", response_model=List[QueueItem])
-def get_completed_queue():
-    """Get all completed/discharged patients, sorted by completion time."""
-    return queue_manager.get_completed_queue()
+def get_completed_queue(role: str = Depends(get_current_role), hospital_code: str = Depends(get_hospital_code)):
+    """Get all completed/discharged patients. Scrubs clinical data for RECEPTIONIST."""
+    items = queue_manager.get_completed_queue(hospital_code=hospital_code)
+    if role == "RECEPTIONIST":
+        scrubbed = []
+        for item in items:
+            m_item = item.model_copy(deep=True) if hasattr(item, 'model_copy') else item.copy(deep=True)
+            m_item.patient.vitals = Vitals()
+            m_item.triage_result.reasons = []
+            m_item.triage_result.feature_importances = None
+            m_item.triage_result.ml_confidence = None
+            m_item.triage_result.rules_priority = ""
+            m_item.initial_vitals = None
+            scrubbed.append(m_item)
+        return scrubbed
+    elif role != "CLINICIAN":
+        masked_items = []
+        for item in items:
+            m_item = item.model_copy(deep=True) if hasattr(item, 'model_copy') else item.copy(deep=True)
+            m_item.patient.name = mask_name(m_item.patient.name)
+            masked_items.append(m_item)
+        return masked_items
+    return items
 
 @app.post("/api/completed/{patient_id}/archive")
-def archive_completed_patient(patient_id: str):
+def archive_completed_patient(patient_id: str, hospital_code: str = Depends(get_hospital_code)):
     """Archive a completed patient (removes them from completed list)."""
-    if patient_id not in queue_manager.completed_queue:
-        raise HTTPException(status_code=404, detail="Patient not found in completed queue")
+    if not queue_manager.has_patient(patient_id, hospital_code=hospital_code):
+        raise HTTPException(status_code=404, detail="Patient not found")
     queue_manager.archive_patient(patient_id)
     return {"status": "Patient archived", "patient_id": patient_id}
 
 @app.post("/api/queue/vitals")
-def update_vitals(req: VitalsUpdateRequest):
+def update_vitals(req: VitalsUpdateRequest, role: str = Depends(require_clinician_role), hospital_code: str = Depends(get_hospital_code)):
     """Update a patient's vitals (simulates deterioration or re-measurement)."""
-    if req.patient_id not in queue_manager.queue:
+    if not queue_manager.has_patient(req.patient_id, hospital_code=hospital_code):
         raise HTTPException(status_code=404, detail="Patient not found in queue")
 
     queue_manager.update_vitals(
@@ -194,8 +258,8 @@ def update_vitals(req: VitalsUpdateRequest):
     )
 
     # If worsening detected, perform full re-triage
-    item = queue_manager.queue[req.patient_id]
-    if item.escalation_required:
+    item = queue_manager.get_patient(req.patient_id, hospital_code=hospital_code)
+    if item and item.escalation_required:
         old_priority = item.triage_result.priority
         new_result = full_triage_pipeline(item.patient)
         queue_manager.retriage_patient(req.patient_id, new_result)
@@ -203,22 +267,23 @@ def update_vitals(req: VitalsUpdateRequest):
             req.patient_id, old_priority, new_result.priority,
             "VITALS_UPDATE", new_result.confidence
         )
+        return {"status": "success", "escalation_triggered": True}
 
-    return {"status": "success", "escalation_triggered": item.escalation_required}
+    return {"status": "success", "escalation_triggered": False}
 
 @app.post("/api/override")
-def override_priority(req: OverrideRequest):
+def override_priority(req: OverrideRequest, role: str = Depends(require_clinician_role), hospital_code: str = Depends(get_hospital_code)):
     """Clinician overrides the system's recommended priority."""
-    if req.patient_id not in queue_manager.queue:
+    if not queue_manager.has_patient(req.patient_id, hospital_code=hospital_code):
         raise HTTPException(status_code=404, detail="Patient not found in queue")
 
-    item = queue_manager.queue[req.patient_id]
-    old_prio = item.triage_result.priority
-
-    # Apply override
-    item.triage_result.priority = req.new_priority
-    item.triage_result.reasons.append(f"Clinician Override: {req.reason}")
-    item.triage_result.source = "CLINICIAN_OVERRIDE"
+    old_prio = queue_manager.override_patient(
+        patient_id=req.patient_id,
+        new_priority=req.new_priority,
+        reason=req.reason,
+        place_before_id=req.place_before_patient_id,
+        place_after_id=req.place_after_patient_id
+    )
 
     # Audit log
     audit_logger.log_override(req.patient_id, old_prio, req.new_priority, req.reason)
@@ -242,8 +307,9 @@ def get_stats():
 
 @app.post("/api/surge/start")
 def start_surge():
-    """Start a 3× surge simulation — generates ~64 new patients."""
-    patients = create_surge_patients(multiplier=3, base_count=20)
+    """Start a 3× surge simulation — uses dynamic capacity limits."""
+    trigger_capacity = profile_manager.get_surge_trigger_capacity()
+    patients = create_surge_patients(multiplier=3, base_count=trigger_capacity)
     queue_manager.activate_surge()
 
     for patient in patients:
@@ -262,7 +328,7 @@ def start_surge():
 def stop_surge():
     """Stop surge mode — restore normal thresholds."""
     queue_manager.deactivate_surge()
-    audit_logger.log_surge("STOP", len(queue_manager.queue))
+    audit_logger.log_surge("STOP", len(queue_manager.get_queue()))
     return {"status": "Surge mode deactivated", "surge_mode": False}
 
 @app.post("/api/surge")
@@ -273,6 +339,8 @@ def simulate_surge_legacy():
         with open(seed_path, 'r') as f:
             patients_data = json.load(f)
             for p_data in patients_data:
+                # Ensure unique ID to avoid PK collisions from prior sessions
+                p_data['id'] = f"{p_data.get('id', 'PT')}_{uuid.uuid4().hex[:6].upper()}"
                 patient = PatientInput(**p_data)
                 result = full_triage_pipeline(patient)
                 queue_manager.add_patient(patient, result)
@@ -286,13 +354,14 @@ def simulate_surge_legacy():
 @app.post("/api/simulate/deteriorate")
 def simulate_deterioration_endpoint():
     """Simulate deterioration in waiting patients."""
-    deteriorated_ids = simulate_deterioration(queue_manager.queue, percentage=0.15)
+    current_queue = {item.patient.id: item for item in queue_manager.get_queue()}
+    deteriorated_ids = simulate_deterioration(current_queue, percentage=0.15)
 
     # Re-triage each deteriorated patient
     retriaged = []
     for pid in deteriorated_ids:
-        if pid in queue_manager.queue:
-            item = queue_manager.queue[pid]
+        item = current_queue.get(pid)
+        if item:
             old_priority = item.triage_result.priority
             new_result = full_triage_pipeline(item.patient)
             queue_manager.retriage_patient(pid, new_result)
@@ -312,9 +381,9 @@ def simulate_deterioration_endpoint():
     }
 
 @app.post("/api/queue/{patient_id}/discharge")
-def discharge_patient(patient_id: str):
+def discharge_patient(patient_id: str, hospital_code: str = Depends(get_hospital_code)):
     """Remove a patient from the queue (discharge)."""
-    if patient_id not in queue_manager.queue:
+    if not queue_manager.has_patient(patient_id, hospital_code=hospital_code):
         raise HTTPException(status_code=404, detail="Patient not found in queue")
 
     queue_manager.remove_patient(patient_id)
@@ -322,9 +391,9 @@ def discharge_patient(patient_id: str):
     return {"status": "Patient discharged", "patient_id": patient_id}
 
 @app.post("/api/clear")
-def clear_state():
+def clear_state(hospital_code: str = Depends(get_hospital_code)):
     """Clear all state (reset queue, audit logs, surge mode)."""
-    queue_manager.queue.clear()
+    queue_manager.clear_all(hospital_code=hospital_code)
     audit_logger.logs.clear()
     queue_manager.deactivate_surge()
     return {"status": "cleared"}
@@ -339,7 +408,7 @@ def search_patients_for_chat(name: str):
     """Search for patients in the active queue by name."""
     name_lower = name.lower()
     matches = []
-    for item in queue_manager.queue.values():
+    for item in queue_manager.get_queue():
         if name_lower in item.patient.name.lower() or name_lower in item.patient.id.lower():
             matches.append({
                 "id": item.patient.id,
@@ -359,4 +428,47 @@ def chat_extract_vitals(req: ChatVitalsRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 # Mount frontend
+
+@app.patch("/api/queue/{patient_id}/update")
+def update_patient_details(patient_id: str, req: PatientUpdatePayload, hospital_code: str = Depends(get_hospital_code)):
+    """Update general patient details and trigger a re-triage."""
+    item = queue_manager.get_patient(patient_id, hospital_code=hospital_code)
+    if not item:
+        raise HTTPException(status_code=404, detail="Patient not found in active queue")
+        
+    patient = item.patient
+    old_priority = item.triage_result.priority
+    changed = False
+
+    update_data = req.model_dump(exclude_unset=True) if hasattr(req, 'model_dump') else req.dict(exclude_unset=True)
+    vitals_keys = {'heart_rate', 'blood_pressure', 'spo2', 'temperature', 'respiratory_rate', 'gcs', 'pain_scale'}
+    
+    for key, value in update_data.items():
+        if key in vitals_keys:
+            if getattr(patient.vitals, key, None) != value:
+                setattr(patient.vitals, key, value)
+                changed = True
+        else:
+            if getattr(patient, key, None) != value:
+                setattr(patient, key, value)
+                changed = True
+        
+    if changed:
+        new_result = full_triage_pipeline(patient)
+        queue_manager.retriage_patient(patient_id, new_result, new_patient_data=patient)
+        audit_logger.log_retriage(
+            patient_id, old_priority, new_result.priority,
+            "DETAILS_UPDATED", new_result.confidence
+        )
+        return {"status": "success", "retriaged": True, "new_priority": new_result.priority}
+        
+    return {"status": "success", "retriaged": False, "message": "No fields changed"}
+
+from fastapi.responses import FileResponse
+
+@app.get("/hospitals")
+def get_hospitals_page():
+    """Serve the Hospital Admin Portal"""
+    return FileResponse("frontend/hospital_portal.html")
+
 app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")

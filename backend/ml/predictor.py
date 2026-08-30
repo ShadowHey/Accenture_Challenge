@@ -7,7 +7,12 @@ def predict_triage(patient: PatientInput) -> tuple:
     if not model:
         return None, None, None
     
-    features = extract_features(patient)
+    # Apply PII masking before sending to ML feature extraction
+    from backend.security.pii_masker import mask_name
+    patient_copy = patient.model_copy(deep=True) if hasattr(patient, 'model_copy') else patient.copy(deep=True)
+    patient_copy.name = mask_name(patient_copy.name)
+    
+    features = extract_features(patient_copy)
     
     try:
         import pandas as pd

@@ -10,20 +10,25 @@
     <header>
         <h1>🏥 PatientTriage.ai <span class="stage-badge">Stage 2 — Hybrid ML</span></h1>
         <div class="actions">
+            <span id="hospital-badge" class="hospital-badge">🏥 Loading...</span>
+            <span id="user-badge" class="user-badge">👤</span>
             <button id="btn-add-patient" class="btn-primary">+ Add Patient</button>
-            <button id="btn-surge-seed" class="btn-warning">Load Seed Patients</button>
-            <button id="btn-surge-3x" class="btn-danger">Simulate Surge (3×)</button>
-            <button id="btn-deteriorate" class="btn-warning">Simulate Deterioration</button>
-            <button id="btn-surge-stop" class="btn-secondary" style="display:none;">Stop Surge</button>
-            <div class="auto-discharge-wrapper">
-                <button id="btn-auto-discharge" class="btn-secondary">Auto Discharge: OFF</button>
-                <div class="auto-discharge-popover">
-                    <label>Interval (s):
-                        <input type="number" id="auto-discharge-interval" value="5" min="1" style="width: 50px;">
-                    </label>
+            <div id="admin-controls" style="display:inline-flex; gap:8px;">
+                <button id="btn-surge-seed" class="btn-warning">Load Seed Patients</button>
+                <button id="btn-surge-3x" class="btn-danger">Simulate Surge (3×)</button>
+                <button id="btn-deteriorate" class="btn-warning">Simulate Deterioration</button>
+                <button id="btn-surge-stop" class="btn-secondary" style="display:none;">Stop Surge</button>
+                <div class="auto-discharge-wrapper">
+                    <button id="btn-auto-discharge" class="btn-secondary">Auto Discharge: OFF</button>
+                    <div class="auto-discharge-popover">
+                        <label>Interval (s):
+                            <input type="number" id="auto-discharge-interval" value="5" min="1" style="width: 50px;">
+                        </label>
+                    </div>
                 </div>
+                <button id="btn-clear" class="btn-secondary">Clear All</button>
             </div>
-            <button id="btn-clear" class="btn-secondary">Clear All</button>
+            <button id="btn-logout" class="btn-secondary" style="margin-left: 10px;">🚪 Logout</button>
         </div>
     </header>
 
@@ -138,6 +143,7 @@
             <div class="modal-toggle" style="margin-bottom: 15px; display: flex; gap: 15px;">
                 <label><input type="radio" name="ap_mode" value="form" checked> Form View</label>
                 <label><input type="radio" name="ap_mode" value="json"> JSON View</label>
+                <label><input type="radio" name="ap_mode" value="fhir"> Submit FHIR Bundle</label>
             </div>
 
             <form id="add-patient-form">
@@ -266,6 +272,15 @@
 ]'></textarea>
                 </div>
 
+                <div id="ap-fhir-view" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h3 style="margin: 0;">Standard FHIR Bundle</h3>
+                        <button type="button" id="btn-load-fhir-sample" class="btn-secondary btn-sm">Load Sample FHIR Bundle</button>
+                    </div>
+                    <p style="font-size: 0.85em; color: #666;">Paste an industry-standard HL7 FHIR v4 JSON Bundle containing Patient and Observation resources.</p>
+                    <textarea id="ap-fhir-input" rows="25" style="width: 100%; font-family: monospace; padding: 10px; resize: vertical;" placeholder='{"resourceType": "Bundle", "type": "transaction", "entry": [...]}'></textarea>
+                </div>
+
                 <button type="submit" id="ap-submit-btn" class="btn-primary" style="width:100%;margin-top:15px;">Submit Patient</button>
             </form>
         </div>
@@ -329,6 +344,98 @@
 
     <!-- Shared Tooltip for Horizontal Queue -->
     <div id="shared-hq-tooltip" class="shared-hq-tooltip"></div>
+
+    
+    <!-- UPDATE PATIENT MODAL -->
+    <div id="update-patient-modal" class="modal">
+        <div class="modal-content modal-large">
+            <span class="close-btn" data-modal="update-patient-modal">&times;</span>
+            <h2>Update Patient Details</h2>
+            <form id="update-patient-form">
+                <input type="hidden" id="up-patient-id">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input type="text" id="up-name">
+                    </div>
+                    <div class="form-group">
+                        <label>Age</label>
+                        <input type="number" id="up-age" min="0" max="120">
+                    </div>
+                    <div class="form-group">
+                        <label>Gender</label>
+                        <select id="up-gender">
+                            <option value="M">Male</option>
+                            <option value="F">Female</option>
+                            <option value="O">Other</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Chief Complaint</label>
+                    <input type="text" id="up-complaint" placeholder="e.g. Chest pain, shortness of breath">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Heart Rate (bpm)</label>
+                        <input type="number" id="up-hr" min="0" max="300">
+                    </div>
+                    <div class="form-group">
+                        <label>Blood Pressure</label>
+                        <input type="text" id="up-bp" placeholder="e.g. 120/80">
+                    </div>
+                    <div class="form-group">
+                        <label>SpO2 (%)</label>
+                        <input type="number" id="up-spo2" min="0" max="100">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Temperature (°C)</label>
+                        <input type="number" id="up-temp" step="0.1" min="30" max="45">
+                    </div>
+                    <div class="form-group">
+                        <label>Resp. Rate</label>
+                        <input type="number" id="up-rr" min="0" max="80">
+                    </div>
+                    <div class="form-group">
+                        <label>GCS (3-15)</label>
+                        <input type="number" id="up-gcs" min="3" max="15">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Pain Scale (0-10)</label>
+                        <input type="number" id="up-pain" min="0" max="10">
+                    </div>
+                    <div class="form-group">
+                        <label>Arrival Mode</label>
+                        <select id="up-arrival">
+                            <option value="walk-in">Walk-in</option>
+                            <option value="ambulance">Ambulance</option>
+                            <option value="helicopter">Helicopter</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>History Available</label>
+                        <select id="up-history">
+                            <option value="false">No</option>
+                            <option value="true">Yes</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Medical History (comma-separated)</label>
+                    <input type="text" id="up-med-history" placeholder="e.g. Hypertension, Diabetes">
+                </div>
+                <div class="form-group">
+                    <label>Observed Signs (comma-separated)</label>
+                    <input type="text" id="up-signs" placeholder="e.g. Pale, Sweating, Alert">
+                </div>
+                <button type="submit" class="btn-primary" style="width:100%;margin-top:15px;">Update Patient</button>
+            </form>
+        </div>
+    </div>
 
     <script src="app.js"></script>
 </body>

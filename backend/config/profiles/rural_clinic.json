@@ -1,0 +1,14 @@
+{
+    "id": "rural_clinic",
+    "name": "Rural Emergency Clinic",
+    "description": "Low-staffed rural clinic. Looser SLAs, enters surge mode with very few patients.",
+    "wait_thresholds_seconds": {
+        "LEVEL 1": 0,
+        "LEVEL 2": 900,
+        "LEVEL 3": 3600,
+        "LEVEL 4": 7200,
+        "LEVEL 5": 14400
+    },
+    "surge_capacity_trigger": 10,
+    "surge_multiplier": 0.3
+}
