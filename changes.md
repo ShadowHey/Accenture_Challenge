@@ -35,3 +35,39 @@
   - **Why**: To improve dashboard usability. Clinicians need to immediately filter the queue during surges or rapidly update vitals via chat.
   - **Impact**: Provides a major UX improvement and makes the system feel more intelligent and responsive.
 - **`tests/unit/test_triage.py`**: Updated unit tests to accurately validate the newly refined age-stratified rules and 400-dimension ML features.
+
+## 2026-09-01
+### Code Changes (Hospital Portal FHIR Ingestion & cURL API Reference)
+- **`backend/routers/fhir.py`**:
+  - Added new endpoint `POST /api/fhir/fetch-and-submit` with `FHIRFetchRequest` Pydantic model (`fhir_url: HttpUrl`).
+  - Added server-side HTTP fetching using `httpx.Client(timeout=10.0)` to pull FHIR bundles directly from external hospital FHIR servers, parse them via `parse_fhir_bundle()`, and insert into Supabase `historical_records`.
+  - Added robust exception handling for `httpx.TimeoutException` (504), `httpx.HTTPStatusError` (502), and `FHIRParserError` (400).
+  - **Why**: Allows hospital admins to ingest FHIR records simply by supplying their server endpoint rather than manually copy-pasting massive JSON payloads.
+  - **Impact**: Removes manual data entry friction, improves ingestion throughput, and eliminates browser-level CORS issues by executing the fetch server-side.
+  - **Tests**: Verified syntax, request validation, and endpoint integration.
+
+- **`requirements.txt`**:
+  - Added `httpx` dependency.
+  - **Why**: Required for asynchronous/synchronous server-side HTTP calls to external FHIR endpoints.
+  - **Impact**: Enables server-to-server healthcare data fetching.
+
+- **`frontend/hospital_portal.html`**:
+  - Redesigned the page layout from a single narrow column to a responsive two-column grid (`.page-layout`, `.left-col`, `.right-col`).
+  - Added a "Fetch from FHIR Server URL" input section below the existing JSON textarea, separated by an "OR" divider.
+  - Built a persistent, sticky dark-themed **API Reference sidebar** (`.api-ref`) on the right containing ready-to-run cURL snippets for:
+    1. Authentication (`POST /api/auth/login`)
+    2. Direct FHIR bundle submission (`POST /api/fhir/historical`)
+    3. Server-side URL fetching (`POST /api/fhir/fetch-and-submit`)
+    4. Supported LOINC codes reference table for vital signs
+    5. Best practices and rate-limiting tips for high-frequency polling (~10 req/s).
+  - Added "Copy" buttons to every code block.
+  - **Why**: Empowers external hospital IT teams and integration scripts to programmatically ingest historical data at high frequency without guessing payload structures or authentication flows.
+  - **Impact**: Greatly improves developer experience and integration efficiency.
+
+- **`frontend/hospital_portal.js`**:
+  - Added `buildCurlSnippets()` IIFE that dynamically populates cURL commands with the active `window.location.host` origin.
+  - Added `copyCode()` clipboard handler with temporary visual feedback ("Copied!").
+  - Added event listener for `#fhir-fetch-btn` with input validation, JWT token authorization header, and loading state management ("Fetching...").
+  - **Why**: Provides automated feedback and 1-click developer onboarding.
+  - **Impact**: Clean, interactive UX for both web-based and terminal-based hospital integrations.
+

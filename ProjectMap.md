@@ -17,6 +17,12 @@
     *   `reconciler.py`: Merges rules and ML predictions safely.
     *   `training/generate_training_data.py`: Generates synthetic CSV data.
     *   `training/train_model.py`: Trains GradientBoostingClassifier and saves to joblib.
+*   `backend/routers/`
+    *   `fhir.py`: Endpoints for FHIR Bundle ingestion (`/Bundle`), historical record parsing (`/historical`), and server-side URL fetching (`/fetch-and-submit`).
+    *   `auth_router.py`: Hospital registration, authentication, JWT session management, and `/me` profile retrieval.
+    *   `ingestion.py`: Direct historical record ingestion from verified hospitals.
+*   `backend/adapters/`
+    *   `fhir_parser.py`: Translates standard FHIR Bundles and LOINC vital observations into internal `PatientInput` models.
 *   `backend/queue/`
     *   `queue_monitor.py`: Queue manager. Tracks severity thresholds, active reassessment, and vitals trend monitoring.
 *   `backend/audit/`
@@ -28,9 +34,11 @@
 
 ## Frontend
 
-*   `frontend/index.html`: UI structure (Stage 2: modals for Add Patient, Override, Update Vitals, stats panel).
-*   `frontend/app.js`: UI logic and API communication.
-*   `frontend/style.css`: UI styling and animations.
+*   `frontend/index.html`: Nurse Triage Dashboard UI structure (Stage 2: modals for Add Patient, Override, Update Vitals, stats panel, horizontal queue).
+*   `frontend/app.js`: Nurse Triage Dashboard logic and API communication.
+*   `frontend/style.css`: UI styling, responsiveness, and animations.
+*   `frontend/hospital_portal.html`: Hospital Admin Portal with two-column layout: FHIR JSON upload form, URL fetcher, and sticky cURL API Reference panel with LOINC lookup.
+*   `frontend/hospital_portal.js`: Hospital Admin Portal logic, authentication handling, server-side fetch trigger, dynamic cURL snippet generation, and copy utilities.
 
 ## Patient Data
 
