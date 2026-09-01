@@ -1,4 +1,71 @@
 const API_BASE = '/api';
+const BASE_URL = `${window.location.protocol}//${window.location.host}`;
+
+// ── Populate curl snippets in the API Reference panel ──
+(function buildCurlSnippets() {
+    const auth = `curl -X POST ${BASE_URL}/api/auth/login \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "username": "YOUR_HOSPITAL_CODE",
+    "password": "YOUR_PASSWORD"
+  }'`;
+
+    const submit = `curl -X POST ${BASE_URL}/api/fhir/historical \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer <YOUR_TOKEN>" \\
+  -d '{
+    "resourceType": "Bundle",
+    "type": "collection",
+    "entry": [
+      {
+        "resource": {
+          "resourceType": "Patient",
+          "id": "patient-001",
+          "name": [{"given": ["John"], "family": "Doe"}],
+          "gender": "male",
+          "birthDate": "1990-05-15"
+        }
+      },
+      {
+        "resource": {
+          "resourceType": "Observation",
+          "code": {
+            "coding": [{
+              "system": "http://loinc.org",
+              "code": "8867-4"
+            }]
+          },
+          "valueQuantity": {"value": 88}
+        }
+      }
+    ]
+  }'`;
+
+    const fetch_ = `curl -X POST ${BASE_URL}/api/fhir/fetch-and-submit \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer <YOUR_TOKEN>" \\
+  -d '{
+    "fhir_url": "https://your-fhir-server.com/Bundle/patient-001"
+  }'`;
+
+    document.getElementById('curl-auth').textContent   = auth;
+    document.getElementById('curl-submit').textContent = submit;
+    document.getElementById('curl-fetch').textContent  = fetch_;
+})();
+
+// ── Copy button handler ──
+function copyCode(btn) {
+    const pre = btn.closest('.code-block').querySelector('pre');
+    navigator.clipboard.writeText(pre.textContent).then(() => {
+        btn.textContent = 'Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => {
+            btn.textContent = 'Copy';
+            btn.classList.remove('copied');
+        }, 2000);
+    });
+}
+
 
 function showMessage(msg, isError = false) {
     const banner = document.getElementById('message-banner');
@@ -135,6 +202,43 @@ document.getElementById('fhir-form').addEventListener('submit', async (e) => {
         }
     } catch (err) {
         showMessage('Network error', true);
+    }
+});
+
+document.getElementById('fhir-fetch-btn').addEventListener('click', async () => {
+    const url = document.getElementById('fhir-url-input').value.trim();
+    if (!url) {
+        showMessage('Please enter a FHIR Server URL', true);
+        return;
+    }
+
+    const btn = document.getElementById('fhir-fetch-btn');
+    btn.textContent = 'Fetching...';
+    btn.disabled = true;
+
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_BASE}/fhir/fetch-and-submit`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ fhir_url: url })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+            showMessage('FHIR data fetched from URL and saved successfully!');
+            document.getElementById('fhir-url-input').value = '';
+        } else {
+            showMessage(data.detail || 'Failed to fetch FHIR data', true);
+        }
+    } catch (err) {
+        showMessage('Network error', true);
+    } finally {
+        btn.textContent = 'Fetch & Submit';
+        btn.disabled = false;
     }
 });
 

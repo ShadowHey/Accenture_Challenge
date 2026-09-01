@@ -10,3 +10,6 @@ supabase
 python-dotenv
 bcrypt
 python-multipart
+sentence-transformers
+passlib
+httpx
