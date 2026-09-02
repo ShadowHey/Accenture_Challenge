@@ -39,3 +39,40 @@
   - Uses Regex to pull out numerical values.
   - Strips stop words and fuzzy-matches (`difflib`) the remaining context words against a dictionary of known vital synonyms (e.g., "sats" -> "spo2").
 - **Outputs**: A mapped dictionary of structured vitals that can be immediately patched into the patient's record.
+
+## Hospital Integration & Ingestion Pipeline
+
+### FHIR Parser Adapter (`backend/adapters/fhir_parser.py`)
+- **Inputs**: Standard FHIR R4 Bundle JSON containing `Patient`, `Observation`, and `Condition` resource types.
+- **Processing**:
+  - Extracts demographics (`name`, `gender`, `birthDate` $\rightarrow$ calculated `age`).
+  - Maps standard LOINC codes into internal vital fields:
+    - `8867-4`: Heart Rate (bpm)
+    - `2708-6`: SpO2 (%)
+    - `8310-5`: Body Temperature (°F/°C)
+    - `9279-1`: Respiratory Rate (breaths/min)
+    - `72514-3`: Pain Scale (0–10)
+    - `85354-9`: Blood Pressure (extracts systolic `8480-6` and diastolic `8462-4` components)
+  - Extracts clinical conditions (`Condition` resources) into `medical_history` and `chief_complaint`.
+- **Outputs**: Internal `PatientInput` dictionary with validated schema.
+
+### Server-Side FHIR Fetcher (`backend/routers/fhir.py`)
+- **Endpoint**: `POST /api/fhir/fetch-and-submit`
+- **Request Model**:
+  ```python
+  class FHIRFetchRequest(BaseModel):
+      fhir_url: HttpUrl
+  ```
+- **Security**: Protected by `get_hospital_code` dependency (validates JWT Bearer session token).
+- **Network Flow**:
+  1. Executes server-to-server HTTP GET to `fhir_url` with 10.0-second timeout and `Accept: application/fhir+json`.
+  2. Avoids client-side CORS limitations and shields external FHIR server endpoints from browser inspection.
+  3. Translates bundle via `parse_fhir_bundle()`.
+  4. Resolves authenticated hospital ID from Supabase `hospitals` table.
+  5. Persists structured record to `historical_records` table linked via foreign key `hospital_id`.
+
+### Hospital Admin Portal (`frontend/hospital_portal.html`, `frontend/hospital_portal.js`)
+- **Two-Column Layout**:
+  - **Left Column**: Forms for authentication (Login/Register), direct FHIR bundle JSON upload, and server-side URL fetch trigger.
+  - **Right Column (API Reference)**: Persistent sticky developer sidebar with auto-populated cURL commands (matching current origin `window.location.host`), LOINC lookup table, and 1-click clipboard copy buttons for high-frequency automated polling (~10 req/s).
+

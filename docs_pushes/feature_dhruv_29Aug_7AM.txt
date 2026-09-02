@@ -50,3 +50,25 @@
 - **`backend/nlp_parser.py`**: Created module to parse free-text for vital sign updates.
 - **`frontend/`**: Integrated 'Rhea' chatbot interface and priority-level Queue Filters.
 - **Architecture/Technical Decision**: Implemented a fuzzy-matching NLP parser (`difflib`) instead of simple regex. *Why It's Better*: Simple regex breaks if a clinician types "pulse 90" instead of "hr 90". Fuzzy matching standardizes synonymous clinical terms into strict backend data models, ensuring safe and accurate updates.
+
+## Update (Sep 1, 2026) - FHIR Server-Side Fetch & cURL API Reference Sidebar
+
+### Code & File Structure Changes
+- **`backend/routers/fhir.py`**: Added `POST /api/fhir/fetch-and-submit` endpoint using `httpx` to fetch FHIR bundles server-side from external endpoints and persist to Supabase `historical_records`.
+- **`requirements.txt`**: Added `httpx` dependency.
+- **`frontend/hospital_portal.html`**: Redesigned page to two-column grid. Added FHIR URL input and interactive dark-mode API Reference sidebar with cURL snippets and LOINC code reference table.
+- **`frontend/hospital_portal.js`**: Added dynamic cURL generation with `window.location.host`, clipboard copy handlers, and event listeners for URL fetching with loading state.
+- **`changes.md`**, **`ProjectMap.md`**, **`docs/LLD.md`**: Updated with FHIR router architecture, endpoints, and data ingestion specifications.
+
+### Architecture Changes
+- **Server-Side FHIR Ingestion Pipeline**: Introduced a proxy pattern where the FastAPI server retrieves external FHIR bundles instead of the browser.
+- **Developer Onboarding & Self-Serve API Docs**: Embedded live, actionable API reference directly in the hospital dashboard for programmatic high-frequency ingestion (~10 req/s).
+
+### Technical Decisions & Justifications
+1. **Server-Side Fetching (`httpx`) vs. Client-Side Browser Fetching**:
+   - *Previous State*: Admins had to manually copy-paste raw FHIR JSON bundles from external portals.
+   - *Why It's Better*: Browsers block cross-origin requests to third-party FHIR servers due to CORS policies. Fetching server-to-server avoids CORS completely, protects tokens from browser inspection, and allows backend-level timeouts (10s) and status normalization.
+2. **Integrated Two-Column API Reference Sidebar with Dynamic Hostname**:
+   - *Previous State*: External hospital developers had no direct documentation on the portal on how to automate ingestion scripts.
+   - *Why It's Better*: Showing ready-to-run cURL commands for login, direct bundle push, and URL fetch (with 1-click copy and auto-detected hostnames) enables hospital IT teams to integrate automated EHR polling scripts immediately without external documentation.
+
